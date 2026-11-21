@@ -4532,17 +4532,40 @@ class ProfileSuperclass(object):
         self.gene_level_coverage_stats_dict = table_for_gene_level_coverages.read()
 
 
-    def init_gene_level_normalized_coverage_stats_dicts(self):
+    def init_gene_level_normalized_coverage_stats_dicts(self, compute_if_missing=False):
         """Populate `self.gene_level_normalized_coverage_stats_dict`.
 
         If the genes database already has normalized coverage stats stored, reads them from
-        there. Otherwise computes all five normalizations from `non_outlier_mean_coverage`
-        values in `self.gene_level_coverage_stats_dict` and stores them in the genes database.
+        there regardless of `compute_if_missing`. Otherwise, if `compute_if_missing` is True,
+        computes all five normalizations from `non_outlier_mean_coverage` values in
+        `self.gene_level_coverage_stats_dict` and stores them in the genes database. If it
+        is False, leaves the dictionary empty.
+
+        Parameters
+        ==========
+        compute_if_missing : bool
+            Whether to compute and store normalized coverage stats when the genes database
+            does not have them yet.
         """
 
-        if not self.genes_db_path:
-            raise ConfigError("Normalized gene-level coverage stats can only be computed when a genes "
-                              "database is available, but anvi'o could not find one for this run :/")
+        if not self.genes_db_path or not self.genes_db_available:
+            if compute_if_missing:
+                raise ConfigError("Normalized gene-level coverage stats can only be computed when a genes "
+                                  "database is available, but anvi'o could not find one for this run :/")
+
+            return
+
+        genes_db_obj = db.DB(self.genes_db_path, None, ignore_version=True)
+        normalized_coverages_stored = genes_db_obj.get_meta_value('gene_level_normalized_coverages_stored', return_none_if_not_in_table=True)
+        genes_db_obj.disconnect()
+
+        if normalized_coverages_stored:
+            table = TableForGeneLevelNormalizedCoverages(self.genes_db_path, run=self.run, progress=self.progress)
+            self.gene_level_normalized_coverage_stats_dict = table.read()
+            return
+
+        if not compute_if_missing:
+            return
 
         if not len(self.gene_level_coverage_stats_dict):
             raise ConfigError("Normalized gene-level coverage stats cannot be computed because the raw "
@@ -4550,15 +4573,7 @@ class ProfileSuperclass(object):
                               "`init_gene_level_coverage_stats_dicts` ran successfully before calling "
                               "this function.")
 
-        genes_db_obj = db.DB(self.genes_db_path, None, ignore_version=True)
-        normalized_coverages_stored = genes_db_obj.get_meta_value('gene_level_normalized_coverages_stored')
-        genes_db_obj.disconnect()
-
-        if normalized_coverages_stored:
-            table = TableForGeneLevelNormalizedCoverages(self.genes_db_path, run=self.run, progress=self.progress)
-            self.gene_level_normalized_coverage_stats_dict = table.read()
-        else:
-            self.compute_and_store_gene_level_normalized_coverage_stats()
+        self.compute_and_store_gene_level_normalized_coverage_stats()
 
 
     def compute_and_store_gene_level_normalized_coverage_stats(self):
@@ -4733,8 +4748,9 @@ class ProfileSuperclass(object):
             if init_split_coverage_values_per_nt:
                 self.init_split_coverage_values_per_nt_dict(split_names)
 
-            if compute_gene_level_normalized_coverages:
-                self.init_gene_level_normalized_coverage_stats_dicts()
+            # normalized coverage stats are read from the genes database whenever they are stored there,
+            # and computed only if the caller asked for it
+            self.init_gene_level_normalized_coverage_stats_dicts(compute_if_missing=compute_gene_level_normalized_coverages)
 
             # we have nothing to do here anymore. and can return.
             return
@@ -4786,8 +4802,7 @@ class ProfileSuperclass(object):
                 # we computed all the stuff, and we can as well store them into the genes db.
                 self.store_gene_level_coverage_stats_into_genes_db(parameters, gene_caller_ids_to_exclude=failed_gene_caller_ids_set)
 
-        if compute_gene_level_normalized_coverages:
-            self.init_gene_level_normalized_coverage_stats_dicts()
+        self.init_gene_level_normalized_coverage_stats_dicts(compute_if_missing=compute_gene_level_normalized_coverages)
 
 
     def init_split_coverage_values_per_nt_dict(self, split_names=None):
