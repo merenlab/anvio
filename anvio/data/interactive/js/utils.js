@@ -902,13 +902,55 @@ function strip(html) {
 }
 
 /**
- * Clear min/max inputs for a selectbox row
+ * Clear min/max inputs for a selectbox row when its normalization changes. Center values are cleared
+ * as well, since a center value refers to normalized values, and would mean something entirely
+ * different (or nothing at all) under a different normalization
  * @param {HTMLElement} selectbox - Select element
  */
 function clearMinMax(selectbox) {
     const $tr = $(selectbox).parent().parent();
     $tr.find('.input-min').val('0').prop('disabled', true);
     $tr.find('.input-max').val('0').prop('disabled', true);
+
+    const $center = $tr.find('.input-center');
+    if ($center.length && $center.val().trim() !== '') {
+        // trigger change, so everything that depends on the center value (such as the min/max boxes) is updated
+        $center.val('').trigger('change');
+        notifyCenterValuesReset($tr.find('td.titles').attr('title'));
+    }
+}
+
+// layers whose center values were reset due to a change in normalization. when normalization is changed
+// for many layers at once (through the 'edit attributes for multiple layers' row), we collect them here
+// to tell the user about all of them with a single message rather than one message per layer
+var layers_with_center_values_reset = [];
+
+/**
+ * Tell the user that center values of one or more layers were reset after a change in normalization
+ * @param {string} layer_name - Name of the layer whose center value was reset
+ */
+function notifyCenterValuesReset(layer_name) {
+    layers_with_center_values_reset.push(layer_name);
+
+    // only the first layer schedules the message, which will include every layer reset until then
+    if (layers_with_center_values_reset.length > 1)
+        return;
+
+    setTimeout(function() {
+        const names = layers_with_center_values_reset;
+        layers_with_center_values_reset = [];
+
+        let layer_list = names.slice(0, 5).map(name => `'${name}'`).join(', ');
+        if (names.length > 5) {
+            layer_list += `, and ${names.length - 5} more`;
+        }
+
+        toastr.info(`The center value${names.length == 1 ? ' of ' : 's of '}${layer_list} ${names.length == 1 ? 'was' : 'were'} reset, ` +
+                    `since a center value refers to normalized values, and the one you had set would mean something ` +
+                    `entirely different under the new normalization. You can set a new center value any time (clicking ` +
+                    `on a center box will even offer you the mean and median of the newly normalized values).`,
+                    "Center values reset");
+    }, 0);
 }
 
 /**
