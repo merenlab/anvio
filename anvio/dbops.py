@@ -4597,8 +4597,10 @@ class ProfileSuperclass(object):
 
         Notes
         =====
-        - cpm and zscore_cpm require `self.num_mapped_reads_per_sample` to be set. A
-          ConfigError is raised if it is None (blank profile or very old database).
+        - cpm and zscore_cpm require the number of reads mapped to each sample, which is read
+          from the 'total_reads_mapped' key in the layer additional data of the profile
+          database. If it is not available for every sample (e.g., very old databases),
+          nothing is computed or stored, and a warning is emitted.
         """
 
         if not self.num_mapped_reads_per_sample:
@@ -4608,6 +4610,29 @@ class ProfileSuperclass(object):
                               "databases that pre-date storage of this value.")
 
         sample_names = self.p_meta['samples']
+
+        # learn the number of reads mapped to each sample from the layer additional data of the profile
+        # database. we read it by sample name, rather than from the comma-separated 'total_reads_mapped'
+        # value in the self table of merged profiles, since the order of that list follows the order of
+        # input profiles, which is not necessarily the order of `self.p_meta['samples']`. we explicitly set
+        # `gene_mode` to False, otherwise TableForLayerAdditionalData would read from the genes database.
+        layer_data_args = argparse.Namespace(profile_db=self.profile_db_path, gene_mode=False)
+        _, layer_additional_data = TableForLayerAdditionalData(layer_data_args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False)).get()
+
+        if all(s in layer_additional_data and 'total_reads_mapped' in layer_additional_data[s] for s in sample_names):
+            num_mapped_reads_per_sample = {s: int(layer_additional_data[s]['total_reads_mapped']) for s in sample_names}
+        else:
+            num_mapped_reads_per_sample = None
+
+        if not num_mapped_reads_per_sample or not all(num_mapped_reads_per_sample.values()):
+            self.run.warning("Anvi'o was going to compute normalized gene-level coverage stats (log1p, cpm, and "
+                             "z-scores), but it needs the number of reads mapped per sample to compute CPM-based "
+                             "normalizations, and this information is not available for your profile database. "
+                             "This can happen with very old anvi'o profile databases that pre-date storage of "
+                             "this value. Anvi'o will skip this step, and normalized views will not be available. "
+                             "Everything else will work as usual.", header="NO NORMALIZED GENE COVERAGES FOR YOU")
+            return
+
         gene_callers_ids = sorted(self.gene_level_coverage_stats_dict.keys())
 
         if len(sample_names) == 1:
@@ -4631,7 +4656,7 @@ class ProfileSuperclass(object):
         log1p_matrix = numpy.log1p(raw_matrix)
 
         self.progress.update("Computing CPM...")
-        mapped_reads = numpy.array([self.num_mapped_reads_per_sample[s] for s in sample_names], dtype=float)
+        mapped_reads = numpy.array([num_mapped_reads_per_sample[s] for s in sample_names], dtype=float)
         cpm_matrix = raw_matrix / mapped_reads * 1e6
 
         self.progress.update("Computing z-scores...")
