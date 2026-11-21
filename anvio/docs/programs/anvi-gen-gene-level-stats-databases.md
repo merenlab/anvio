@@ -18,4 +18,4 @@ You also have the option to provide a list of %(bin)s (either as a file or as a 
 
 ### Other Parameters
 
-You can also change the definition of an outlier nucleotide position or switch calculations to use the [INSeq/Tn-Seq](https://www.illumina.com/science/sequencing-method-explorer/kits-and-arrays/in-seq-tn-seq.html) statistical methods.
+You can also change the definition of an outlier nucleotide position (with `--outliers-threshold`), or whether nucleotide positions with zero coverage should be treated as outliers (with `--zeros-are-outliers`).
