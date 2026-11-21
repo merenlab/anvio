@@ -93,7 +93,8 @@ $(document).ready(function() {
 
     $('.input-height-multiple, .input-margin-multiple, .input-min-multiple, .input-max-multiple, .input-center-multiple').on('change', function() {
         var new_val = this.value;
-        var target_selector = '.' + this.getAttribute('class').split(' ').pop().replace('-multiple', '') + ':enabled';
+        // skip read-only boxes as well (e.g., min/max boxes of layers with a center value)
+        var target_selector = '.' + this.getAttribute('class').split(' ').pop().replace('-multiple', '') + ':enabled:not([readonly])';
         var table = $(this).closest('table');
 
         $(table).find('.layer_selectors:checked:visible').each(

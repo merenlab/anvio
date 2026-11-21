@@ -361,6 +361,10 @@ Drawer.prototype.calculate_bar_sizes = function() {
             var min_new = null;
             var max_new = null;
 
+            // min/max values are not used for diverging layers (i.e., layers with a center value)
+            var center = layer.get_view_attribute('center');
+            var is_diverging = (center !== '' && center !== undefined && !isNaN(parseFloat(center)));
+
             for (var id in this.layerdata_dict)
             {
                 if (layer.is_stackbar)
@@ -386,8 +390,6 @@ Drawer.prototype.calculate_bar_sizes = function() {
                 else // numerical data
                 {
                     var bar_size = isNumber(this.layerdata_dict[id][layer.index]) ? parseFloat(this.layerdata_dict[id][layer.index]) : 0;
-                    var center = layer.get_view_attribute('center');
-                    var is_diverging = (center !== '' && center !== undefined);
 
                     if (is_diverging)
                     {
@@ -439,7 +441,9 @@ Drawer.prototype.calculate_bar_sizes = function() {
                 }
             }
 
-            if (min_max_disabled)
+            // once min/max values are learned from the data, they become available to the user. but diverging layers
+            // don't learn them, so we leave their min/max boxes as they are, to be learned once the center is removed
+            if (min_max_disabled && !is_diverging)
             {
                 $('#min' + layer.index).prop('disabled', false);
                 $('#max' + layer.index).val(max_new).prop('disabled', false);

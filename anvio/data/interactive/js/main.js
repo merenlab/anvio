@@ -1984,7 +1984,13 @@ function buildLayersTable(order, settings)
                         picker_start.attr('color', new_color);
                         picker_start.css('background-color', new_color);
                     }
+
+                    // min/max values are not used while there is a center value
+                    toggleMinMaxForCenter($(this).closest('tr'));
                 });
+
+                // a layer may already have a center value (e.g., from a state)
+                toggleMinMaxForCenter($('#tbody_layers tr:last'));
             }
 
         }
