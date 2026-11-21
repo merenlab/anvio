@@ -15,7 +15,6 @@ import datetime
 import textwrap
 import threading
 import itertools
-import scipy.signal
 import pandas as pd
 
 # multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
@@ -4304,7 +4303,6 @@ class ProfileSuperclass(object):
         init_split_coverage_values_per_nt = A('init_split_coverage_values_per_nt')
         outliers_threshold = A('outliers_threshold')
         zeros_are_outliers = A('zeros_are_outliers')
-        self.inseq_stats = A('inseq_stats')
 
         # early on let's check some ground truth
         if not self.profile_db_path:
@@ -4536,7 +4534,6 @@ class ProfileSuperclass(object):
         table_for_gene_level_coverages = TableForGeneLevelCoverages(self.genes_db_path,
                                                                     parameters,
                                                                     split_names=self.split_names_of_interest,
-                                                                    mode="INSEQ" if self.inseq_stats else "STANDARD",
                                                                     run=self.run)
 
         if gene_caller_ids_to_exclude:
@@ -4555,7 +4552,6 @@ class ProfileSuperclass(object):
         table_for_gene_level_coverages = TableForGeneLevelCoverages(self.genes_db_path,
                                                                     parameters,
                                                                     split_names=self.split_names_of_interest,
-                                                                    mode="INSEQ" if self.inseq_stats else "STANDARD",
                                                                     run=self.run)
 
         self.gene_level_coverage_stats_dict = table_for_gene_level_coverages.read()
@@ -4577,7 +4573,7 @@ class ProfileSuperclass(object):
             'min_cov_for_detection': min_cov_for_detection,
             'outliers_threshold': outliers_threshold,
             'zeros_are_outliers': zeros_are_outliers,
-            'mode': 'INSEQ' if self.inseq_stats else 'STANDARD'
+            'mode': 'STANDARD'
         }
 
         if self.p_meta['blank']:
@@ -4620,25 +4616,7 @@ class ProfileSuperclass(object):
         if self.genes_db_path and self.genes_db_available:
             # THIS IS A SPECIAL CASE, where someone is initializing the gene-level coverage
             # stats for a single bin. In this case anvi'o will want to work with a genes
-            # database to read from, or to populate one for later uses. But the proplem is,
-            # we may be called from a part of the code that doesn't know what KIND of genes
-            # database is being called. Therefore, the `parameters` dict we are about to send
-            # to `init_gene_level_coverage_stats_from_genes_db` may contain the default
-            # `mode` value set before. BUT WE DON'T WANT THAT.
-            mode_set_in_db = db.DB(self.genes_db_path, client_version=None, ignore_version=True).get_meta_value('mode')
-
-            self.run.warning("A gene stats database of type '%s' is found (anvi'o hopes that this is the type of stats you "
-                             "were expecting to find)." % mode_set_in_db.upper())
-
-            parameters['mode'] = mode_set_in_db
-
-            # since we are here and learned the mode, we can also set the self.inseq_stats variable IF the table
-            # is actually inseq stats table. if we don't do this, the interactive interface will never load the inseq
-            # data because this variable is not set anywhere :/ the best practice would have been using a mode variable
-            # rather than an operation specific boolean flag, but well .. apologies to future generations of developers:
-            if mode_set_in_db == "INSEQ":
-                self.inseq_stats = True
-
+            # database to read from, or to populate one for later uses.
             self.init_gene_level_coverage_stats_from_genes_db(parameters)
         elif self.genes_db_path and not self.genes_db_available:
             self.run.warning("You don't seem to have a genes database associated with your profile database. "
@@ -4663,7 +4641,7 @@ class ProfileSuperclass(object):
         # if we have not 'returned' yet it means we gotta go through this
         self.init_split_coverage_values_per_nt_dict(split_names)
 
-        self.progress.new('Computing gene-level coverage stats in %s mode...' % ('INSEQ' if self.inseq_stats else 'STANDARD'))
+        self.progress.new('Computing gene-level coverage stats ...')
         self.progress.update('...')
 
         num_splits, counter = len(split_names), 1
@@ -4730,11 +4708,7 @@ class ProfileSuperclass(object):
 
 
     def get_gene_level_coverage_stats_entry_for_default(self, gene_callers_id, split_coverage, sample_name, gene_start, gene_stop, gene_length, outliers_threshold=1.5):
-        """Returns coverage stats for a single gene in default mode.
-
-        The alternative to this mode is the INSEQ/Tn-SEQ mode that is handled in `get_gene_level_coverage_stats_entry_for_inseq`,
-        where coverage statistics are computed differently.
-        """
+        """Returns coverage stats for a single gene."""
         # and recover the gene coverage array per position for a given sample:
         gene_coverage_values_per_nt = split_coverage[sample_name][gene_start:gene_stop]
 
@@ -4768,7 +4742,6 @@ class ProfileSuperclass(object):
                 'non_outlier_coverage_std': non_outlier_coverage_std,
                 'gene_coverage_values_per_nt': gene_coverage_values_per_nt,
                 'non_outlier_positions': non_outlier_positions}
-
 
 
     def get_gene_level_coverage_stats(self, split_name, contigs_db, min_cov_for_detection=0, outliers_threshold=1.5,
@@ -4844,22 +4817,13 @@ class ProfileSuperclass(object):
 
             # the magic happens here:
             for sample_name in self.p_meta['samples']:
-                if self.inseq_stats:
-                    gene_coverage_stats = self.get_gene_level_coverage_stats_entry_for_inseq(gene_callers_id=gene_callers_id,
-                                                                                             split_coverage=split_coverage,
-                                                                                             sample_name=sample_name,
-                                                                                             gene_start=gene_start,
-                                                                                             gene_stop=gene_stop,
-                                                                                             gene_length=gene_length,
-                                                                                             outliers_threshold=outliers_threshold)
-                else:
-                    gene_coverage_stats = self.get_gene_level_coverage_stats_entry_for_default(gene_callers_id=gene_callers_id,
-                                                                                               split_coverage=split_coverage,
-                                                                                               sample_name=sample_name,
-                                                                                               gene_start=gene_start,
-                                                                                               gene_stop=gene_stop,
-                                                                                               gene_length=gene_length,
-                                                                                               outliers_threshold=outliers_threshold)
+                gene_coverage_stats = self.get_gene_level_coverage_stats_entry_for_default(gene_callers_id=gene_callers_id,
+                                                                                           split_coverage=split_coverage,
+                                                                                           sample_name=sample_name,
+                                                                                           gene_start=gene_start,
+                                                                                           gene_stop=gene_stop,
+                                                                                           gene_length=gene_length,
+                                                                                           outliers_threshold=outliers_threshold)
 
                 if not gene_coverage_stats:
                     # if we got a None here, it means there was something wrong with this gene caller.
