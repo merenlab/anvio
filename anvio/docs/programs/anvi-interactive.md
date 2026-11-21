@@ -54,10 +54,7 @@ The clustering of %(bin)ss in this case based on their distribution across sampl
 
 ### Genes mode: Visualizing *genes* instead of contigs
 
-You can also start the interactive interface in "gene mode", in which each item of the central tree is a gene instead of a split or contig (or
-
-
-bin like in "collection mode").
+You can also start the interactive interface in "gene mode", in which each item of the central tree is a gene instead of a split or contig (or bin like in "collection mode").
 
 To initiate the visualization in gene mode you need the following:
 
