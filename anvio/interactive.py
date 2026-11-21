@@ -99,6 +99,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.bin_id = A('bin_id')
         self.collection_name = A('collection_name')
         self.gene_mode = A('gene_mode')
+        self.skip_computing_gene_level_normalized_coverages = A('skip_computing_gene_level_normalized_coverages')
         self.inspect_split_name = A('split_name')
         self.just_do_it = A('just_do_it')
         self.skip_hierarchical_clustering = A('skip_hierarchical_clustering')
@@ -124,6 +125,11 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                   "`anvi-script-add-default-collection`, which would add a single collection that describes all contigs "
                                   "in your contigs database (in an ideal world you should use the last one only if you are working with "
                                   "a single genome).")
+
+        if self.skip_computing_gene_level_normalized_coverages and not self.gene_mode:
+            raise ConfigError("The flag `--skip-computing-gene-level-normalized-coverages` only makes sense in gene mode, "
+                              "since normalized gene-level coverages are only computed for genes databases. Please either "
+                              "add `--gene-mode` (along with a collection and a bin) to your command, or remove this flag.")
 
         if self.collection_name and (not self.gene_mode) and (self.bin_id or self.bin_ids_file_path) and self.mode != 'refine':
             raise ConfigError("There is something confusing here. On the one hand you provide a collection name, telling "
@@ -1747,8 +1753,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         ProfileSuperclass.__init__(self, self.args)
 
-        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
-        self.init_gene_level_coverage_stats_dicts(compute_gene_level_normalized_coverages=not A('skip_computing_gene_level_normalized_coverages'))
+        self.init_gene_level_coverage_stats_dicts(compute_gene_level_normalized_coverages=not self.skip_computing_gene_level_normalized_coverages)
 
         # the gene_level_coverage_stats_dict contains a mixture of data, some of which are not relevant to
         # our purpose of generating views for the interactive interface. here we explicitly list keys that
