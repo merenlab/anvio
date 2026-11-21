@@ -229,7 +229,7 @@ class TableForGeneLevelNormalizedCoverages(Table):
         ==========
         data : dict
             Nested dict of the form {gene_callers_id: {sample_name: {'log1p': float,
-            'cpm': float, 'zscore_raw': float, 'zscore_log1p': float, 'zscore_cpm': float}}}
+            'cov_per_million': float, 'zscore_raw': float, 'zscore_log1p': float, 'zscore_cov_per_million': float}}}
         """
         self.progress.new("Database bleep bloop")
         self.progress.update("Adding normalized coverage stats into the genes database...")
@@ -241,10 +241,10 @@ class TableForGeneLevelNormalizedCoverages(Table):
                 db_entries.append((gene_callers_id,
                                    sample_name,
                                    e['log1p'],
-                                   e['cpm'],
+                                   e['cov_per_million'],
                                    e['zscore_raw'],
                                    e['zscore_log1p'],
-                                   e['zscore_cpm']))
+                                   e['zscore_cov_per_million']))
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
         database._exec_many(f'''INSERT INTO {t.gene_level_normalized_coverages_table_name} VALUES (?,?,?,?,?,?,?)''', db_entries)
@@ -266,7 +266,7 @@ class TableForGeneLevelNormalizedCoverages(Table):
         =======
         dict
             Nested dict of the form {gene_callers_id: {sample_name: {'log1p': float,
-            'cpm': float, 'zscore_raw': float, 'zscore_log1p': float, 'zscore_cpm': float}}}
+            'cov_per_million': float, 'zscore_raw': float, 'zscore_log1p': float, 'zscore_cov_per_million': float}}}
         """
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
@@ -289,10 +289,10 @@ class TableForGeneLevelNormalizedCoverages(Table):
                 data[gene_callers_id] = {}
 
             data[gene_callers_id][sample_name] = {'log1p': entry['log1p'],
-                                                  'cpm': entry['cpm'],
+                                                  'cov_per_million': entry['cov_per_million'],
                                                   'zscore_raw': entry['zscore_raw'],
                                                   'zscore_log1p': entry['zscore_log1p'],
-                                                  'zscore_cpm': entry['zscore_cpm']}
+                                                  'zscore_cov_per_million': entry['zscore_cov_per_million']}
 
         self.progress.end()
 

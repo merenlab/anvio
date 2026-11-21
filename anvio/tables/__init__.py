@@ -162,8 +162,8 @@ gene_level_coverage_stats_table_structure = ['gene_callers_id', 'sample_name', '
 gene_level_coverage_stats_table_types     = [    'numeric'    ,     'text'   ,    'numeric'   ,  'numeric' ,         'numeric'          ,          'numeric'        ,             'blob'           ,          'blob'        ]
 
 gene_level_normalized_coverages_table_name      = 'gene_level_normalized_coverages'
-gene_level_normalized_coverages_table_structure = ['gene_callers_id', 'sample_name', 'log1p', 'cpm', 'zscore_raw', 'zscore_log1p', 'zscore_cpm']
-gene_level_normalized_coverages_table_types     = [    'numeric'    ,    'text'    , 'numeric', 'numeric', 'numeric',   'numeric'  ,  'numeric' ]
+gene_level_normalized_coverages_table_structure = ['gene_callers_id', 'sample_name', 'log1p', 'cov_per_million', 'zscore_raw', 'zscore_log1p', 'zscore_cov_per_million']
+gene_level_normalized_coverages_table_types     = [    'numeric'    ,    'text'    , 'numeric',     'numeric'    ,   'numeric' ,    'numeric'  ,          'numeric'      ]
 
 ####################################################################################################
 #

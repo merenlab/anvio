@@ -4586,15 +4586,17 @@ class ProfileSuperclass(object):
 
         Normalizations computed
         =======================
-        log1p        : log(non_outlier_mean_coverage + 1), reduces dynamic range
-        cpm          : non_outlier_mean_coverage / mapped_reads_in_sample * 1e6, coverage per
-                       million mapped reads; accounts for differences in sequencing depth
-                       across samples
-        zscore_raw   : per-gene z-score of raw non_outlier_mean_coverage across samples;
-                       captures how many standard deviations a gene's coverage in a given
-                       sample deviates from that gene's mean coverage across all samples
-        zscore_log1p : same as zscore_raw but applied to log1p-transformed values
-        zscore_cpm   : same as zscore_raw but applied to cpm-normalized values
+        log1p                  : log(non_outlier_mean_coverage + 1), reduces dynamic range
+        cov_per_million        : non_outlier_mean_coverage / mapped_reads_in_sample * 1e6, mean
+                                 coverage depth per million mapped reads (note that this is not
+                                 CPM, i.e., counts per million); accounts for differences in
+                                 sequencing depth across samples
+        zscore_raw             : per-gene z-score of raw non_outlier_mean_coverage across samples;
+                                 captures how many standard deviations a gene's coverage in a
+                                 given sample deviates from that gene's mean coverage across all
+                                 samples
+        zscore_log1p           : same as zscore_raw but applied to log1p-transformed values
+        zscore_cov_per_million : same as zscore_raw but applied to cov_per_million values
 
         For any gene where the standard deviation across samples is 0 (including genes with
         0 coverage in all samples), z-scores are set to 0.0. Profile databases with a single
@@ -4602,7 +4604,7 @@ class ProfileSuperclass(object):
 
         Notes
         =====
-        - cpm and zscore_cpm require the number of reads mapped to each sample, which is read
+        - cov_per_million and zscore_cov_per_million require the number of reads mapped to each sample, which is read
           from the 'total_reads_mapped' key in the layer additional data of the profile
           database. If it is not available for every sample (e.g., very old databases),
           nothing is computed or stored, and a warning is emitted.
@@ -4624,8 +4626,8 @@ class ProfileSuperclass(object):
             num_mapped_reads_per_sample = None
 
         if not num_mapped_reads_per_sample or not all(num_mapped_reads_per_sample.values()):
-            self.run.warning("Anvi'o was going to compute normalized gene-level coverage stats (log1p, cpm, and "
-                             "z-scores), but it needs the number of reads mapped per sample to compute CPM-based "
+            self.run.warning("Anvi'o was going to compute normalized gene-level coverage stats (log1p, cov_per_million, and "
+                             "z-scores), but it needs the number of reads mapped per sample to compute coverage-per-million-based "
                              "normalizations, and this information is not available for your profile database. "
                              "This can happen with very old anvi'o profile databases that pre-date storage of "
                              "this value. Anvi'o will skip this step, and normalized views will not be available. "
@@ -4651,9 +4653,9 @@ class ProfileSuperclass(object):
         self.progress.update("Computing log1p...")
         log1p_matrix = numpy.log1p(raw_matrix)
 
-        self.progress.update("Computing CPM...")
+        self.progress.update("Computing coverage per million mapped reads...")
         mapped_reads = numpy.array([num_mapped_reads_per_sample[s] for s in sample_names], dtype=float)
-        cpm_matrix = raw_matrix / mapped_reads * 1e6
+        cov_per_million_matrix = raw_matrix / mapped_reads * 1e6
 
         self.progress.update("Computing z-scores...")
 
@@ -4666,7 +4668,7 @@ class ProfileSuperclass(object):
 
         zscore_raw_matrix = zscore_matrix(raw_matrix)
         zscore_log1p_matrix = zscore_matrix(log1p_matrix)
-        zscore_cpm_matrix = zscore_matrix(cpm_matrix)
+        zscore_cov_per_million_matrix = zscore_matrix(cov_per_million_matrix)
 
         self.progress.update("Assembling result dict...")
         data = {}
@@ -4674,10 +4676,10 @@ class ProfileSuperclass(object):
             data[gene_callers_id] = {}
             for j, sample_name in enumerate(sample_names):
                 data[gene_callers_id][sample_name] = {'log1p': float(log1p_matrix[i, j]),
-                                                      'cpm': float(cpm_matrix[i, j]),
+                                                      'cov_per_million': float(cov_per_million_matrix[i, j]),
                                                       'zscore_raw': float(zscore_raw_matrix[i, j]),
                                                       'zscore_log1p': float(zscore_log1p_matrix[i, j]),
-                                                      'zscore_cpm': float(zscore_cpm_matrix[i, j])}
+                                                      'zscore_cov_per_million': float(zscore_cov_per_million_matrix[i, j])}
 
         self.progress.end()
 
@@ -4689,7 +4691,7 @@ class ProfileSuperclass(object):
         self.run.warning(None, header="GENE LEVEL NORMALIZED COVERAGE STATS COMPUTED", lc="green")
         self.run.info("Num genes", len(data))
         self.run.info("Num samples", len(sample_names))
-        self.run.info("Normalizations", "log1p, cpm, zscore_raw, zscore_log1p, zscore_cpm")
+        self.run.info("Normalizations", "log1p, cov_per_million, zscore_raw, zscore_log1p, zscore_cov_per_million")
 
 
     def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0, outliers_threshold=1.5, zeros_are_outliers=False, callback=None, callback_interval=100, init_split_coverage_values_per_nt=False, gene_caller_ids_of_interest=set([]), compute_gene_level_normalized_coverages=False):

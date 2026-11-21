@@ -15,7 +15,7 @@ progress = terminal.Progress()
 current_version, next_version = [x[1:] for x in __name__.split('_to_')]
 
 new_table_name      = 'gene_level_normalized_coverages'
-new_table_structure = ['gene_callers_id', 'sample_name', 'log1p', 'cpm', 'zscore_raw', 'zscore_log1p', 'zscore_cpm']
+new_table_structure = ['gene_callers_id', 'sample_name', 'log1p', 'cov_per_million', 'zscore_raw', 'zscore_log1p', 'zscore_cov_per_million']
 new_table_types     = ['numeric', 'text', 'numeric', 'numeric', 'numeric', 'numeric', 'numeric']
 
 
@@ -49,7 +49,7 @@ def migrate(db_path):
 
     run.info_single(f"Your genes db is now version {next_version}. A new empty table "
                     f"'gene_level_normalized_coverages' has been added to store normalized "
-                    f"gene coverage values (log1p, cpm, zscore_raw, zscore_log1p, zscore_cpm). "
+                    f"gene coverage values (log1p, cov_per_million, zscore_raw, zscore_log1p, zscore_cov_per_million). "
                     f"Anvi'o will populate it the next time you run anvi-interactive with --gene-mode "
                     f"or anvi-gen-gene-level-stats-databases.", nl_after=1, nl_before=1, mc='green')
 
