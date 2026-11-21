@@ -912,6 +912,26 @@ function clearMinMax(selectbox) {
 }
 
 /**
+ * Make min/max input boxes of a layer read-only while the layer has a center value, since min/max values
+ * are not used for diverging layers. We use `readonly` rather than `disabled` here, because a disabled
+ * min/max box means something else (that min/max values are yet to be learned from the data), and it is
+ * stored in states as such.
+ * @param {jQuery} $tr - The table row of the layer
+ */
+function toggleMinMaxForCenter($tr) {
+    const has_center = ($tr.find('.input-center').val() || '').trim() !== '';
+    const $min_max = $tr.find('.input-min, .input-max');
+
+    $min_max.prop('readonly', has_center);
+
+    if (has_center) {
+        $min_max.attr('title', 'Min and max values are not used while this layer has a center value');
+    } else if ($min_max.attr('title') === 'Min and max values are not used while this layer has a center value') {
+        $min_max.removeAttr('title');
+    }
+}
+
+/**
  * Toggle picker visibility based on selection
  * @param {HTMLElement} selectbox - Select element
  * @param {boolean} togglePicker - Whether to toggle picker
