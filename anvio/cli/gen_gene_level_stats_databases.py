@@ -41,7 +41,8 @@ def main():
     args = get_args()
     parameters = {'min_cov_for_detection': 0,
                   'outliers_threshold': args.outliers_threshold,
-                  'zeros_are_outliers': args.zeros_are_outliers}
+                  'zeros_are_outliers': args.zeros_are_outliers,
+                  'mode': 'STANDARD'}
 
     try:
         splits_dict = ccollections.GetSplitNamesInBins(args).get_dict()
@@ -80,17 +81,8 @@ def main():
             if os.path.exists(genes_db_path):
                 genes_db_is_clean = True
                 try:
-                    if args.inseq_stats:
-                        # update the parameters dict to make sure gene-level stats databases are
-                        # recognized distinctly
-                        parameters['mode'] = 'INSEQ'
-                        run.info('Mode', 'INSEQ', mc="red", nl_after=1)
-                    else:
-                        parameters['mode'] = 'STANDARD'
-                        run.info('Mode', 'STANDARD', mc="red", nl_after=1)
-
-                    TableForGeneLevelCoverages(genes_db_path, parameters, mode=parameters['mode'], run=terminal.Run(verbose=False)).check_params()
-                    TableForGeneLevelCoverages(genes_db_path, parameters, mode=parameters['mode'], split_names=splits_dict[bin_name], run=terminal.Run(verbose=False)).check_split_names()
+                    TableForGeneLevelCoverages(genes_db_path, parameters, run=terminal.Run(verbose=False)).check_params()
+                    TableForGeneLevelCoverages(genes_db_path, parameters, split_names=splits_dict[bin_name], run=terminal.Run(verbose=False)).check_split_names()
                 except ConfigError as e:
                     run.info_single("A genes database found, but the parameters or split names associated with that "
                                     "database do not match to what we want now :( Anvi'o will regenerate it. This was "
@@ -108,8 +100,7 @@ def main():
             profile = dbops.ProfileSuperclass(Namespace(profile_db=args.profile_db,
                                                         contigs_db=args.contigs_db,
                                                         collection_name=args.collection_name,
-                                                        bin_id=bin_name,
-                                                        inseq_stats=args.inseq_stats,),
+                                                        bin_id=bin_name),
                                               r=terminal.Run(verbose=False))
 
             profile.init_gene_level_coverage_stats_dicts(outliers_threshold=args.outliers_threshold,
@@ -148,9 +139,6 @@ def get_args():
 
     groupD = parser.add_argument_group('PARAMETERS OF CONVENIENCE', "They say they save lives.")
     groupD.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
-
-    groupE = parser.add_argument_group('INSEQ DATA', "When analyzing INSeq/Tn-Seq data")
-    groupE.add_argument(*anvio.A('inseq-stats'), **anvio.K('inseq-stats'))
 
     return parser.get_args(parser)
 

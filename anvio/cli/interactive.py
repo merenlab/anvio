@@ -134,7 +134,6 @@ def get_args():
 
     groupD = parser.add_argument_group('GENE MODE', "Gene mode related parameters.")
     groupD.add_argument(*anvio.A('gene-mode'), **anvio.K('gene-mode'))
-    groupD.add_argument(*anvio.A('inseq-stats'), **anvio.K('inseq-stats'))
     groupD.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
 
     groupE = parser.add_argument_group('VISUALS RELATED', "Parameters that give access to various adjustements regarding\
