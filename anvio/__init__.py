@@ -3518,14 +3518,6 @@ D = {
              'type': str,
              'help': "Source repository to download releases, currently only Github is supported. Enter in 'merenlab/anvio' format."}
                 ),
-    'inseq-stats': (
-            ['--inseq-stats'],
-            {'required': False,
-             'action': 'store_true',
-             'default': False,
-             'help': "Provide if working with INSeq/Tn-Seq genomic data. With this, all gene level "
-                     "coverage stats will be calculated using INSeq/Tn-Seq statistical methods."}
-                ),
     'migrate-safely': (
             ['--migrate-safely'],
             {'required': False,
