@@ -1532,6 +1532,7 @@ function syncViews() {
             views[current_view][layer_id] = {};
             views[current_view][layer_id]["normalization"] = $(layer).find('.normalization').val();
             views[current_view][layer_id]["min"] = {'value': $(layer).find('.input-min').val(), 'disabled': $(layer).find('.input-min').is(':disabled') };
+            views[current_view][layer_id]["center"] = $(layer).find('.input-center').val();
             views[current_view][layer_id]["max"] = {'value': $(layer).find('.input-max').val(), 'disabled': $(layer).find('.input-max').is(':disabled') };
 
             layers[layer_id]["color"] = $(layer).find('.colorpicker:last').attr('color');
@@ -1540,7 +1541,6 @@ function syncViews() {
             layers[layer_id]["type"] = $(layer).find('.type').val();
             layers[layer_id]["color-start"] = $(layer).find('.colorpicker:first').attr('color');
             layers[layer_id]["visible"] = $(layer).find('.layer-visibility').hasClass('bi-eye');
-            layers[layer_id]["center"] = $(layer).find('.input-center').val();
 
             if (layers[layer_id]["type"] === 'text')
                 layers[layer_id]["height"] = '0';
@@ -1868,6 +1868,7 @@ function buildLayersTable(order, settings)
                     var max    = view_settings['max']['value'];
                     var min_disabled = view_settings['min']['disabled'];
                     var max_disabled = view_settings['max']['disabled'];
+                    var center = (view_settings['center'] !== undefined) ? view_settings['center'] : '';
                 }
                 else
                 {
@@ -1876,6 +1877,7 @@ function buildLayersTable(order, settings)
                     var max    = getNamedLayerDefaults(layer_name, 'max', 0);
                     var min_disabled = getNamedLayerDefaults(layer_name, 'min_disabled', true);
                     var max_disabled = getNamedLayerDefaults(layer_name, 'max_disabled', true);
+                    var center = '';
                 }
 
                 if (hasLayerSettings)
@@ -1886,7 +1888,6 @@ function buildLayersTable(order, settings)
                     var color_start = layer_settings['color-start'];
                     var type = layer_settings['type'];
                     var visible = (layer_settings['visible'] !== undefined) ? layer_settings['visible'] : true;
-                    var center = (layer_settings['center'] !== undefined) ? layer_settings['center'] : '';
                 }
                 else
                 {
@@ -1894,7 +1895,6 @@ function buildLayersTable(order, settings)
                     var color  = getNamedLayerDefaults(layer_name, 'color', '#000000');
                     var margin = getGroupLeadingMargin(layer_name, getNamedLayerDefaults(layer_name, 'margin', '15'));
                     var visible = true;
-                    var center = '';
                     if (mode == 'collection') {
                         var type = getNamedLayerDefaults(layer_name, 'type', 'intensity');
                         var color_start = "#EEEEEE";

@@ -335,7 +335,7 @@ Drawer.prototype.normalize_values = function() {
                         this.param_max[layer.index] = parseFloat(this.layerdata_dict[id][layer.index]);
                     }
 
-                    var center = layer.get_visual_attribute('center');
+                    var center = layer.get_view_attribute('center');
                     if (center !== '' && center !== undefined) {
                         var deviation = Math.abs(parseFloat(this.layerdata_dict[id][layer.index]) - parseFloat(center));
                         if (!this.param_max_deviation.hasOwnProperty(layer.index) || deviation > this.param_max_deviation[layer.index]) {
@@ -386,7 +386,7 @@ Drawer.prototype.calculate_bar_sizes = function() {
                 else // numerical data
                 {
                     var bar_size = isNumber(this.layerdata_dict[id][layer.index]) ? parseFloat(this.layerdata_dict[id][layer.index]) : 0;
-                    var center = layer.get_visual_attribute('center');
+                    var center = layer.get_view_attribute('center');
                     var is_diverging = (center !== '' && center !== undefined);
 
                     if (is_diverging)
@@ -1411,7 +1411,7 @@ Drawer.prototype.draw_layer_backgrounds = function() {
         }
 
         // diverging bar layers get a split background: left color below the center, right color above it
-        var center = layer.get_visual_attribute('center');
+        var center = layer.get_view_attribute('center');
         var is_diverging_bar = (layer.is_numerical && layer.get_visual_attribute('type') == 'bar' && center !== '' && center !== undefined && !isNaN(parseFloat(center)));
 
         // draw backgrounds
@@ -1548,7 +1548,7 @@ Drawer.prototype.draw_numerical_layers = function() {
 
         var previous_non_zero_order = 0;
 
-        var center = layer.get_visual_attribute('center');
+        var center = layer.get_view_attribute('center');
         var is_diverging = (center !== '' && center !== undefined && !isNaN(parseFloat(center)));
         var half_height = parseFloat(layer.get_visual_attribute('height')) / 2;
 
