@@ -1837,6 +1837,58 @@ Drawer.prototype.draw_numerical_layers = function() {
     }.bind(this));
 };
 
+// draws the path of a diverging line layer twice: once clipped to the region above the center and filled with the
+// right color, and once clipped to the region below the center and filled with the left color, so a diverging line
+// layer is colored the same way as a diverging bar layer
+Drawer.prototype.draw_diverging_line_path = function(layer, path_data) {
+    var svg_ns = 'http://www.w3.org/2000/svg';
+    var layer_group = document.getElementById('layer_' + layer.order);
+    var center_position = this.get_diverging_center_position(layer);
+
+    // a size that is safely larger than anything we draw, to define clip regions that are unbounded along the tree
+    var far = 1e7;
+
+    var regions = {};
+    if (this.settings['tree-type'] == 'phylogram') {
+        // values above the center are drawn from the center towards the start of the layer, and those below the
+        // center towards the end of the layer (see `get_diverging_center_position`)
+        regions['above'] = {'d': `M ${-far} ${-far} H ${center_position} V ${far} H ${-far} Z`, 'clip_rule': 'nonzero'};
+        regions['below'] = {'d': `M ${center_position} ${-far} H ${far} V ${far} H ${center_position} Z`, 'clip_rule': 'nonzero'};
+    } else {
+        // values above the center are drawn outside of the center radius, and those below the center inside of it
+        var circle = function(r) {
+            return `M ${r} 0 A ${r} ${r} 0 1 1 ${-r} 0 A ${r} ${r} 0 1 1 ${r} 0 Z`;
+        };
+        regions['above'] = {'d': circle(far) + ' ' + circle(center_position), 'clip_rule': 'evenodd'};
+        regions['below'] = {'d': circle(center_position), 'clip_rule': 'nonzero'};
+    }
+
+    var colors = {'above': layer.get_visual_attribute('color'),
+                  'below': layer.get_visual_attribute('color-start')};
+
+    for (var region in regions) {
+        var clip_id = 'diverging_line_clip_' + region + '_' + layer.order;
+
+        var clip_path = document.createElementNS(svg_ns, 'clipPath');
+        clip_path.setAttribute('id', clip_id);
+
+        var clip_shape = document.createElementNS(svg_ns, 'path');
+        clip_shape.setAttribute('d', regions[region]['d']);
+        clip_shape.setAttribute('clip-rule', regions[region]['clip_rule']);
+        clip_path.appendChild(clip_shape);
+        layer_group.appendChild(clip_path);
+
+        var path = document.createElementNS(svg_ns, 'path');
+        path.setAttribute('shape-rendering', 'auto');
+        path.setAttribute('pointer-events', 'none');
+        path.setAttribute('fill', colors[region]);
+        path.setAttribute('stroke-width', '0');
+        path.setAttribute('clip-path', 'url(#' + clip_id + ')');
+        path.setAttribute('d', path_data);
+        layer_group.appendChild(path);
+    }
+};
+
 Drawer.prototype.draw_stack_bar_layers = function() {
     this.iterate_layers(function(layer) {
         if (layer.get_visual_attribute('height') == 0 || layer.get_visual_attribute('visible') === false)
