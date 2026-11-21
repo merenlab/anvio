@@ -1962,6 +1962,20 @@ function buildLayersTable(order, settings)
                     } else {
                         picker_start.css('visibility', 'hidden');
                     }
+
+                    // values below the center are drawn with the left color, which defaults to white for most
+                    // layers and would make them invisible. if it is (nearly) white, we replace it with a random
+                    // dark color, so the user can see the diverging values right away
+                    if ($(this).val() !== '' && isColorTooLight(picker_start.attr('color'))) {
+                        var new_color = randomColor({luminosity: 'dark'});
+
+                        if (picker_start.data('colpickId')) {
+                            picker_start.colpickSetColor(new_color.replace('#', ''));
+                        }
+
+                        picker_start.attr('color', new_color);
+                        picker_start.css('background-color', new_color);
+                    }
                 });
             }
 
