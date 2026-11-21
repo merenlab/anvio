@@ -107,6 +107,14 @@ $(window).resize(function() {
 
 $(document).ready(function() {
 
+    // highlight numerical input boxes in layer tables as soon as they are given a value that is not a number,
+    // so the user doesn't have to wait until the next draw to find out (which will refuse to draw anyway)
+    const numerical_input_selectors = Object.keys(NUMERICAL_LAYER_INPUTS).map(c => '.' + c).join(', ');
+    $('#tbody_layers, #tbody_samples').on('input change', numerical_input_selectors, function() {
+        const class_name = Object.keys(NUMERICAL_LAYER_INPUTS).find(c => $(this).hasClass(c));
+        $(this).toggleClass('is-invalid', !isValidNumericalInputValue($(this).val(), NUMERICAL_LAYER_INPUTS[class_name]['can_be_empty']));
+    });
+
     $.ajaxPrefilter(function(options) {
         if (request_prefix) {
             options.url = request_prefix + options.url;
@@ -2251,6 +2259,12 @@ function getLayersNormalizationCannotHandle(settings) {
 
 function drawTree() {
     var defer = $.Deferred();
+
+    // make sure there is nothing but numbers in numerical input boxes before we touch the current figure
+    if (!checkNumericalLayerInputs(['#tbody_layers', '#tbody_samples'])) {
+        return defer.reject().promise();
+    }
+
     var settings = serializeSettings();
     tree_type = settings['tree-type'];
 

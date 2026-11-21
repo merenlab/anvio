@@ -507,6 +507,11 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
 }
 
 function drawSamples() {
+    // make sure there is nothing but numbers in numerical input boxes before we touch the current samples figure
+    if (!checkNumericalLayerInputs(['#tbody_samples'])) {
+        return;
+    }
+
     $('#samples').empty();
     drawSamplesLayers(serializeSettings());
     var samples_tree = document.getElementById('samples_tree');

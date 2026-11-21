@@ -937,6 +937,99 @@ function togglePickerStart(selectbox, togglePicker) {
     }
 }
 
+// numerical input boxes in layer tables (the main 'Display' table and the samples layers table), the column
+// names under which they appear, and whether they can be left empty
+const NUMERICAL_LAYER_INPUTS = {
+    'input-height': {'column': 'Height', 'can_be_empty': false},
+    'input-margin': {'column': 'Margin', 'can_be_empty': false},
+    'input-min':    {'column': 'Min',    'can_be_empty': true},
+    'input-max':    {'column': 'Max',    'can_be_empty': true},
+    'input-center': {'column': 'Center', 'can_be_empty': true},
+};
+
+/**
+ * Check whether the value of a numerical input box is acceptable
+ * @param {string} value - The value of the input box
+ * @param {boolean} can_be_empty - Whether an empty value is acceptable
+ * @returns {boolean} True if the value is a finite number (or empty, when allowed)
+ */
+function isValidNumericalInputValue(value, can_be_empty) {
+    value = (value === undefined || value === null) ? '' : String(value).trim();
+
+    // min/max values of samples layers are 'null' until they are computed for the first time
+    if (value === '' || value === 'null')
+        return can_be_empty;
+
+    return /^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/.test(value);
+}
+
+/**
+ * Find numerical input boxes with values that are not numbers in a layers table, and mark them
+ * @param {string} tbody_selector - Selector for the table body, e.g., '#tbody_layers'
+ * @returns {Array} A list of {layer_name, column, value} objects, one for each invalid input box
+ */
+function findInvalidNumericalLayerInputs(tbody_selector) {
+    const invalid_inputs = [];
+
+    $(tbody_selector + ' tr').each(function(index, tr) {
+        const $tr = $(tr);
+
+        // the main table keeps the layer name in the title of the name cell, the samples table in an attribute
+        const layer_name = $tr.find('td.titles').attr('title') || $tr.attr('samples-layer-name') || '(unknown layer)';
+
+        for (const class_name in NUMERICAL_LAYER_INPUTS) {
+            $tr.find('.' + class_name).each(function(i, input) {
+                const $input = $(input);
+
+                // inputs that are disabled or hidden are not used for drawing
+                if ($input.is(':disabled') || $input.css('visibility') === 'hidden' || $input.css('display') === 'none') {
+                    $input.removeClass('is-invalid');
+                    return;
+                }
+
+                if (isValidNumericalInputValue($input.val(), NUMERICAL_LAYER_INPUTS[class_name]['can_be_empty'])) {
+                    $input.removeClass('is-invalid');
+                } else {
+                    $input.addClass('is-invalid');
+                    invalid_inputs.push({'layer_name': layer_name,
+                                         'column': NUMERICAL_LAYER_INPUTS[class_name]['column'],
+                                         'value': $input.val()});
+                }
+            });
+        }
+    });
+
+    return invalid_inputs;
+}
+
+/**
+ * Check all numerical input boxes in the given layers tables, and warn the user about those that are not numbers
+ * @param {Array} tbody_selectors - Selectors for the table bodies to check
+ * @returns {boolean} True if everything is in order, false if there are invalid values
+ */
+function checkNumericalLayerInputs(tbody_selectors) {
+    let invalid_inputs = [];
+
+    for (const tbody_selector of tbody_selectors) {
+        invalid_inputs = invalid_inputs.concat(findInvalidNumericalLayerInputs(tbody_selector));
+    }
+
+    if (invalid_inputs.length === 0)
+        return true;
+
+    let examples = invalid_inputs.slice(0, 5).map(e => `'${e.value}' for ${e.column} of '${e.layer_name}'`).join(', ');
+    if (invalid_inputs.length > 5) {
+        examples += `, and ${invalid_inputs.length - 5} more`;
+    }
+
+    toastr.error(`Anvi'o can only work with numbers in these boxes, but it found ${invalid_inputs.length == 1 ? 'a value that is' : 'values that are'} ` +
+                 `not: ${examples}. ${invalid_inputs.length == 1 ? 'It is' : 'They are'} highlighted in the settings panel. ` +
+                 `Please fix ${invalid_inputs.length == 1 ? 'it' : 'them'} and try again.`,
+                 "Not a number", {'timeOut': 0, 'extendedTimeOut': 0, 'closeButton': true});
+
+    return false;
+}
+
 /**
  * Check whether a color is so light that it would be nearly invisible on a white background
  * @param {string} color - Hex color string, with or without the leading '#'
