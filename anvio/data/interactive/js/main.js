@@ -1736,6 +1736,7 @@ function buildLayersTable(order, settings)
                 '<td class="column-margin"><input class="form-control form-control-sm input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
                 '<td style="width:55px;">n/a</td>' +
                 '<td style="width:55px;">n/a</td>' +
+                '<td style="width:55px;">n/a</td>' +
                 '<td><input type="checkbox" class="layer_selectors"></input></td>' +
                 '</tr>';
 
@@ -1830,6 +1831,7 @@ function buildLayersTable(order, settings)
                     '<td style="width:55px;">n/a</td>' +
                     '<td><input class="form-control form-control-sm input-height" type="text" size="3" id="height{id}" value="{height}" style="{height-hide}"></input></td>' +
                     '<td class="column-margin"><input class="form-control form-control-sm input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
+                    '<td style="width:55px;">n/a</td>' +
                     '<td style="width:55px;">n/a</td>' +
                     '<td style="width:55px;">n/a</td>' +
                     '<td><input type="checkbox" class="layer_selectors"></input></td>' +
