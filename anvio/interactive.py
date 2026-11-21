@@ -1849,11 +1849,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
             for norm_view in normalized_views:
                 self.views[norm_view] = {'table_name': 'genes', 'header': self.p_meta['samples'], 'dict': {}}
-                for gene_callers_id in self.gene_level_normalized_coverage_stats_dict:
-                    self.views[norm_view]['dict'][str(gene_callers_id)] = {}
-                    for sample_name in self.gene_level_normalized_coverage_stats_dict[gene_callers_id]:
-                        self.views[norm_view]['dict'][str(gene_callers_id)][sample_name] = \
-                            self.gene_level_normalized_coverage_stats_dict[gene_callers_id][sample_name][norm_view]
+                for gene_callers_id, normalized_coverages in self.gene_level_normalized_coverage_stats_dict.items():
+                    self.views[norm_view]['dict'][str(gene_callers_id)] = {sample_name: normalized_coverages[sample_name][norm_view] for sample_name in normalized_coverages}
 
                 newick_tree_text = clustering.get_newick_tree_data_for_dict(self.views[norm_view]['dict'],
                                                                             linkage=self.linkage,
