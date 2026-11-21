@@ -4567,6 +4567,11 @@ class ProfileSuperclass(object):
         if not compute_if_missing:
             return
 
+        # z-scores are meaningless with a single sample. for new genes databases the user is asked to opt out explicitly
+        # (see `init_gene_level_coverage_stats_dicts`), but existing ones are not, so we quietly skip them here
+        if self.p_meta['num_samples'] == 1:
+            return
+
         if not len(self.gene_level_coverage_stats_dict):
             raise ConfigError("Normalized gene-level coverage stats cannot be computed because the raw "
                               "gene-level coverage stats dictionary is empty. Please make sure "
@@ -4592,8 +4597,8 @@ class ProfileSuperclass(object):
         zscore_cpm   : same as zscore_raw but applied to cpm-normalized values
 
         For any gene where the standard deviation across samples is 0 (including genes with
-        0 coverage in all samples), z-scores are set to 0.0. If only one sample is present,
-        all z-scores will be 0.0 and a warning is emitted.
+        0 coverage in all samples), z-scores are set to 0.0. Profile databases with a single
+        sample are not accepted, since all z-scores would be 0.0.
 
         Notes
         =====
@@ -4630,11 +4635,8 @@ class ProfileSuperclass(object):
         gene_callers_ids = sorted(self.gene_level_coverage_stats_dict.keys())
 
         if len(sample_names) == 1:
-            self.run.warning(f"Your profile database only has one sample ('{sample_names[0]}'). Normalized "
-                             f"gene-level coverage stats will be computed and stored, but since z-scores are "
-                             f"computed per gene across samples, every z-score value will be 0.0, which is not "
-                             f"informative. If you don't want these data in your genes database, you can remove "
-                             f"it and run the same command again with `--skip-computing-gene-level-normalized-coverages`.")
+            raise ConfigError("compute_and_store_gene_level_normalized_coverage_stats :: normalized gene-level coverage "
+                              "stats cannot be computed for a profile database with a single sample.")
 
         self.progress.new("Computing gene-level normalized coverage stats")
         self.progress.update("Building coverage matrix from non_outlier_mean_coverage values...")
@@ -4714,6 +4716,20 @@ class ProfileSuperclass(object):
                              "Anvi'o will pretend nothing happened, and will return nothing. If you don't know what this "
                              "is warning you about, just carry on.")
             return
+
+        # normalized gene-level coverages include per-gene z-scores across samples, which are meaningless with a single
+        # sample. so when a genes database is about to be created for a single-sample profile, we want the user to
+        # explicitly opt out of them. we check this here, before anything is computed or a genes database is created,
+        # so the user can simply re-run the same command with the skip flag. if the genes database already exists, the
+        # user has made this decision before, and we don't ask again (normalized coverages will simply not be computed,
+        # see `init_gene_level_normalized_coverage_stats_dicts`)
+        if compute_gene_level_normalized_coverages and self.genes_db_path and not self.genes_db_available and self.p_meta['num_samples'] == 1:
+            raise ConfigError(f"Your profile database has only one sample ('{self.p_meta['samples'][0]}'). By default, anvi'o "
+                              f"computes normalized gene-level coverage stats when it generates gene-level coverage stats for "
+                              f"a genes database, but these include per-gene z-scores across samples, which are not meaningful "
+                              f"with a single sample. Please run the same command again with the flag "
+                              f"`--skip-computing-gene-level-normalized-coverages`, so it is clear to everyone that normalized "
+                              f"coverage values will not be computed, and normalized views will not be available.")
 
         if not self.auxiliary_profile_data_available:
             raise ConfigError("Someone is asking gene-level coverage stats to be computed, but then there is no AUXILIARY-DATA.db "

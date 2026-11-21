@@ -1840,7 +1840,10 @@ D = {
                      "help spot genes whose coverage deviates from the rest of their genome. Using this "
                      "flag will prevent anvi'o from generating these data, and these views will not be "
                      "available. If the genes database already contains them from an earlier run, they "
-                     "will still be shown."}
+                     "will still be shown. Since z-scores are not meaningful with a single sample, anvi'o "
+                     "will force you to include this flag when it creates a new genes database for a profile "
+                     "database that has only one sample (on behalf of anvi'o, we apologize for the "
+                     "inconvenience if/when that happens)."}
                 ),
     'gene-mode': (
             ['--gene-mode'],

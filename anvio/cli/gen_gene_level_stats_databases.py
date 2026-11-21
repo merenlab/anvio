@@ -65,6 +65,12 @@ def main():
                                   "comes between you and your analyses.")
 
 
+        # normalized coverages are not computed for existing genes databases of single-sample profiles (see
+        # `ProfileSuperclass.init_gene_level_normalized_coverage_stats_dicts`), so we need to know this below
+        profile_db = db.DB(args.profile_db, None, ignore_version=True)
+        profile_db_is_single_sample = len(profile_db.get_meta_value('samples').split(',')) == 1
+        profile_db.disconnect()
+
         run.info('Collection', args.collection_name)
         run.info('Bins to work with', ', '.join(bin_names))
 
@@ -99,7 +105,7 @@ def main():
                     normalized_coverages_stored = genes_db.get_meta_value('gene_level_normalized_coverages_stored', return_none_if_not_in_table=True)
                     genes_db.disconnect()
 
-                    if normalized_coverages_stored or args.skip_computing_gene_level_normalized_coverages:
+                    if normalized_coverages_stored or args.skip_computing_gene_level_normalized_coverages or profile_db_is_single_sample:
                         run.info_single('A clean genes database found, moving on.', nl_after=1)
                         continue
                     else:
