@@ -7,6 +7,7 @@ import sys
 from argparse import Namespace
 
 import anvio
+import anvio.db as db
 import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
@@ -91,12 +92,23 @@ def main():
                     os.remove(genes_db_path)
                     genes_db_is_clean = False
 
-                # if the genes db is clean, we don't need ot do anything
+                # if the genes db is clean, we don't need ot do anything, unless it is missing normalized
+                # coverage stats that we are expected to compute by default
                 if genes_db_is_clean:
-                    run.info_single('A clean genes database found, moving on.', nl_after=1)
-                    continue
+                    genes_db = db.DB(genes_db_path, None, ignore_version=True)
+                    normalized_coverages_stored = genes_db.get_meta_value('gene_level_normalized_coverages_stored', return_none_if_not_in_table=True)
+                    genes_db.disconnect()
 
-            # we don't have a genes database, so we will create one.
+                    if normalized_coverages_stored or args.skip_computing_gene_level_normalized_coverages:
+                        run.info_single('A clean genes database found, moving on.', nl_after=1)
+                        continue
+                    else:
+                        run.info_single("A clean genes database found, but it does not have normalized gene-level "
+                                        "coverage stats yet. Anvi'o will compute them now.", nl_after=1)
+
+            # we don't have a genes database, or we have one that is missing normalized coverage stats.
+            # in the latter case the following will read the existing gene-level coverage stats from it
+            # rather than computing them again.
             profile = dbops.ProfileSuperclass(Namespace(profile_db=args.profile_db,
                                                         contigs_db=args.contigs_db,
                                                         collection_name=args.collection_name,
