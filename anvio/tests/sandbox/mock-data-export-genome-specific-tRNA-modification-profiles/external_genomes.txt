@@ -1,0 +1,3 @@
+name	contigs_db_path
+genome_A	/Users/sarahtucker/github/anvio/anvio/tests/sandbox/mock-data-export-genome-specific-tRNA-modification-profiles/GENOME_A.db
+genome_B	/Users/sarahtucker/github/anvio/anvio/tests/sandbox/mock-data-export-genome-specific-tRNA-modification-profiles/GENOME_B.db
