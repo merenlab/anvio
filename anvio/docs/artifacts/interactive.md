@@ -100,7 +100,10 @@ This is one of the most frequently used tabs in the interface, and there are mul
 If you want to remove a layer from the interface, simply change the height to a value of 0.
 
 {:.notice}
-Setting a __center__ value for a layer (e.g., 0 for z-scores or log fold changes) displays its data as diverging around that value: bars and lines extend in both directions from the middle of the layer, and intensity layers use a three-color scale that is white at the center. Values below the center are drawn in the left color, values above in the right color. The left color picker becomes available once a center is set. The scale is symmetric, and is determined by the value that is furthest from the center. When a center is set, min and max values are not used for that layer, and any normalization (log, square root) is applied first, so the center refers to the normalized values. Leave the field empty to return to the regular display.
+Setting a __center__ value for a layer (e.g., 0 for z-scores or log fold changes) displays its data as diverging around that value: bars and lines extend in both directions from the middle of the layer, and intensity layers use a three-color scale that is white at the center. Values below the center are drawn in the left color, values above in the right color, for bars and lines alike. The left color picker becomes available once a center is set, and if the left color is white or nearly white (which would make values below the center invisible), anvi'o replaces it with a random dark color. The scale is symmetric, and is determined by the value that is furthest from the center. Min and max values are not used for layers with a center value, so their boxes are grayed out while a center is set. Any normalization (log, square root) is applied first, so the center refers to the normalized values. Just like normalization, min, and max, center values are specific to each view (e.g., setting a center of 0 for a z-score view will not affect how the same layer is displayed in a coverage view), and they are stored in states as such. Leave the field empty to return to the regular display.
+
+{:.notice}
+Height, margin, min, max, and center boxes only accept numbers. A box with a value that is not a number turns red, and the interface will not draw until it is fixed.
 
 - #### Layers subsection
 
