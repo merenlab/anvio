@@ -18,31 +18,34 @@ The column names may be one of these:
 * `q2q3_cov`: Mean of the coverage (inner quartiles).
 * `median_cov`: Median coverage.
 * `min_cov`: Minimum coverage value observed for the gene, contig, or genome.
-* `max_cov`: Minimum coverage value observed for the gene, contig, or genome.
+* `max_cov`: Maximum coverage value observed for the gene, contig, or genome.
 * `std_cov`: Standard deviation of coverage.
 
-These files can also contain Distribution of Coverage (DisCov) scores and related data values. You can see a fuller description of these in %(discov-stats)s, but here is a quick overview of the related columns:
+These files can also contain distribution of coverage (discov) scores and related data values. You can see a fuller description of these in %(discov-stats)s, but here is a quick overview of the related columns:
 
-* `num_windows`: The number of non-overlapping windows the contig (or genome) was divided into when computing the Spread (_S_) metric.
-* `prop_windows_covered`: The proportion of windows that contain bases with at least some reads mapping to them. Also known as the Spread (_S_) metric.
-* `prop_cov_within_foldrange`: The proportion of bases with nonzero coverage for which the coverage depth is within the expected fold-range of the median nonzero coverage. Also known as the Evenness (_E_) metric.
-* `dis_cov`: The overall Distribution of Coverage score for the contig (or genome), which is either a linear or geometric combination of _S_ and _E_.
+* `num_windows`: The number of non-overlapping windows the contig (or genome) was divided into when computing discov.
+* `actual_prop_windows_covered`: The proportion of windows that contain bases with at least some reads mapping to them (the observed spread).
+* `expected_prop_windows_covered`: The proportion of windows we would expect to be covered if the same reads were placed randomly along the sequence (the expected spread), which depends on the number of mapped reads and their total aligned length.
+* `normalized_spread`: The observed spread divided by the expected spread, capped at 1. Also known as the Spread (_S_) metric.
+* `window_depth_evenness`: 1 / (1 + CV), where CV is the coefficient of variation of the mean coverage depths of the covered windows. Also known as the Evenness (_E_) metric. It is set to 0 when fewer than 3 windows are covered.
+* `spread_evenness_score`: The geometric or linear combination of _S_ and _E_ (_C_).
+* `discov`: The overall distribution of coverage score for the contig (or genome), computed as min(1, _C_ + detection^2).
 
 ### Contig mode, default output
 
-16-column TAB delimited file, where each row represents a single contig x sample pair (so the values in the first column are not unique):
+19-column TAB delimited file, where each row represents a single contig x sample pair (so the values in the first column are not unique):
 
-|**`contig`**|**`sample`**|**`length`**|**`gc_content`**|**`num_mapped_reads`**|**`detection`**|**`mean_cov`**|**`q2q3_cov`**|**`median_cov`**|**`min_cov`**|**`max_cov`**|**`std_cov`**|**`num_windows`**|**`prop_windows_covered`**|**`prop_cov_within_foldrange`**|**`dis_cov`**|
-|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|
-|contig_878|SAMPLE-01|27538|0.608|11877|0.9995|63.61|65.2|65.0|0|107|15.21|92|1.0|0.9536|0.9768|
-|contig_6515|SAMPLE-01|12315|0.446|7669|0.9985|91.51|92.5|92.0|0|195|23.98|41|1.0|0.9567|0.9784|
-|contig_1720|SAMPLE-01|16856|0.312|4237|0.9993|37.85|38.25|38.0|0|56|7.961|57|1.0|0.9809|0.9905|
-|contig_878|SAMPLE-02|27538|0.608|1594|0.9999|9.262|9.161|9.0|0|21|3.42|92|1.0|0.9071|0.9536|
-|contig_6515|SAMPLE-02|12315|0.446|2562|0.9918|33.05|33.47|33.0|0|56|8.503|41|1.0|0.9694|0.9847|
-|contig_1720|SAMPLE-02|16856|0.312|926|0.9986|8.93|8.751|9.0|0|19|3.306|57|1.0|0.927|0.9635|
-|contig_878|SAMPLE-03|27538|0.608|6395|1.0|37.32|37.21|37.0|0|75|11.46|92|1.0|0.9492|0.9746|
-|contig_6515|SAMPLE-03|12315|0.446|300|0.9276|3.953|3.682|4.0|0|15|2.644|41|1.0|0.8077|0.9038|
-|contig_1720|SAMPLE-03|16856|0.312|18175|1.0|178.1|178.1|178.0|1|269|29.13|57|1.0|0.9924|0.9962|
+|**`contig`**|**`sample`**|**`length`**|**`gc_content`**|**`num_mapped_reads`**|**`detection`**|**`mean_cov`**|**`q2q3_cov`**|**`median_cov`**|**`min_cov`**|**`max_cov`**|**`std_cov`**|**`num_windows`**|**`actual_prop_windows_covered`**|**`expected_prop_windows_covered`**|**`normalized_spread`**|**`window_depth_evenness`**|**`spread_evenness_score`**|**`discov`**|
+|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|
+|contig_878|SAMPLE-01|27538|0.608|11877|0.9995|63.61|65.2|65.0|0|107|15.21|92|1.0|1.0|1.0|0.8684|0.9319|1.0|
+|contig_6515|SAMPLE-01|12315|0.446|7669|0.9985|91.51|92.5|92.0|0|195|23.98|41|1.0|1.0|1.0|0.8321|0.9122|1.0|
+|contig_1720|SAMPLE-01|16856|0.312|4237|0.9993|37.85|38.25|38.0|0|56|7.961|57|1.0|1.0|1.0|0.8481|0.9209|1.0|
+|contig_878|SAMPLE-02|27538|0.608|1594|0.9999|9.262|9.161|9.0|0|21|3.42|92|1.0|1.0|1.0|0.7851|0.8861|1.0|
+|contig_6515|SAMPLE-02|12315|0.446|2562|0.9918|33.05|33.47|33.0|0|56|8.503|41|1.0|1.0|1.0|0.8324|0.9124|1.0|
+|contig_1720|SAMPLE-02|16856|0.312|926|0.9986|8.93|8.751|9.0|0|19|3.306|57|1.0|1.0|1.0|0.7848|0.8859|1.0|
+|contig_878|SAMPLE-03|27538|0.608|6395|1.0|37.32|37.21|37.0|0|75|11.46|92|1.0|1.0|1.0|0.8119|0.901|1.0|
+|contig_6515|SAMPLE-03|12315|0.446|300|0.9276|3.953|3.682|4.0|0|15|2.644|41|1.0|1.0|1.0|0.6796|0.8244|1.0|
+|contig_1720|SAMPLE-03|16856|0.312|18175|1.0|178.1|178.1|178.0|1|269|29.13|57|1.0|1.0|1.0|0.8659|0.9305|1.0|
 
 ### Contig mode, minimal output:
 
@@ -62,19 +65,19 @@ These files can also contain Distribution of Coverage (DisCov) scores and relate
 
 ### Genome mode, default output
 
-16-column TAB delimited file, where each row represents a single bin/genome x sample pair:
+19-column TAB delimited file, where each row represents a single bin/genome x sample pair:
 
-|**`bin`**|**`sample`**|**`length`**|**`gc_content`**|**`num_mapped_reads`**|**`detection`**|**`mean_cov`**|**`q2q3_cov`**|**`median_cov`**|**`min_cov`**|**`max_cov`**|**`std_cov`**|**`num_windows`**|**`prop_windows_covered`**|**`prop_cov_within_foldrange`**|**`dis_cov`**|
-|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|
-|Bin_2|SAMPLE-01|16856|0.312|4237|0.9993|37.85|38.25|38.0|0|56|7.961|17|1.0|0.9809|0.9905|
-|Bin_3|SAMPLE-01|12315|0.446|7669|0.9985|91.51|92.5|92.0|0|195|23.98|13|1.0|0.9567|0.9784|
-|Bin_1|SAMPLE-01|27538|0.608|11877|0.9995|63.61|65.2|65.0|0|107|15.21|28|1.0|0.9536|0.9768|
-|Bin_2|SAMPLE-02|16856|0.312|926|0.9986|8.93|8.751|9.0|0|19|3.306|17|1.0|0.927|0.9635|
-|Bin_3|SAMPLE-02|12315|0.446|2562|0.9918|33.05|33.47|33.0|0|56|8.503|13|1.0|0.9694|0.9847|
-|Bin_1|SAMPLE-02|27538|0.608|1594|0.9999|9.262|9.161|9.0|0|21|3.42|28|1.0|0.9071|0.9536|
-|Bin_2|SAMPLE-03|16856|0.312|18175|1.0|178.1|178.1|178.0|1|269|29.13|17|1.0|0.9924|0.9962|
-|Bin_3|SAMPLE-03|12315|0.446|300|0.9276|3.953|3.682|4.0|0|15|2.644|13|1.0|0.8077|0.9038|
-|Bin_1|SAMPLE-03|27538|0.608|6395|1.0|37.32|37.21|37.0|0|75|11.46|28|1.0|0.9492|0.9746|
+|**`bin`**|**`sample`**|**`length`**|**`gc_content`**|**`num_mapped_reads`**|**`detection`**|**`mean_cov`**|**`q2q3_cov`**|**`median_cov`**|**`min_cov`**|**`max_cov`**|**`std_cov`**|**`num_windows`**|**`actual_prop_windows_covered`**|**`expected_prop_windows_covered`**|**`normalized_spread`**|**`window_depth_evenness`**|**`spread_evenness_score`**|**`discov`**|
+|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|
+|Bin_1|SAMPLE-01|27538|0.608|11877|0.9995|63.61|65.2|65.0|0|107|15.21|3|1.0|1.0|1.0|0.9701|0.9849|1.0|
+|Bin_2|SAMPLE-01|16856|0.312|4237|0.9993|37.85|38.25|38.0|0|56|7.961|2|1.0|1.0|1.0|0.0|0.0|0.9987|
+|Bin_3|SAMPLE-01|12315|0.446|7669|0.9985|91.51|92.5|92.0|0|195|23.98|2|1.0|1.0|1.0|0.0|0.0|0.9971|
+|Bin_1|SAMPLE-02|27538|0.608|1594|0.9999|9.262|9.161|9.0|0|21|3.42|3|1.0|1.0|1.0|0.9281|0.9634|1.0|
+|Bin_2|SAMPLE-02|16856|0.312|926|0.9986|8.93|8.751|9.0|0|19|3.306|2|1.0|1.0|1.0|0.0|0.0|0.9973|
+|Bin_3|SAMPLE-02|12315|0.446|2562|0.9918|33.05|33.47|33.0|0|56|8.503|2|1.0|1.0|1.0|0.0|0.0|0.9837|
+|Bin_1|SAMPLE-03|27538|0.608|6395|1.0|37.32|37.21|37.0|0|75|11.46|3|1.0|1.0|1.0|0.9435|0.9713|1.0|
+|Bin_2|SAMPLE-03|16856|0.312|18175|1.0|178.1|178.1|178.0|1|269|29.13|2|1.0|1.0|1.0|0.0|0.0|1.0|
+|Bin_3|SAMPLE-03|12315|0.446|300|0.9276|3.953|3.682|4.0|0|15|2.644|2|1.0|1.0|1.0|0.0|0.0|0.8605|
 
 ### Genome mode, minimal output
 

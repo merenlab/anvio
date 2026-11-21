@@ -1,4 +1,4 @@
-This input file type describes pairs of genomes that go together in an analysis, and is usually paired with an %(external-genomes)s file that describes where the %(contigs-db) associated with each genome name is located.
+This input file type describes pairs of genomes that go together in an analysis, and is usually paired with an %(external-genomes)s file that describes where the %(contigs-db)s associated with each genome name is located.
 
 In the context of %(anvi-predict-metabolic-exchanges)s, this file describes which pairs of genomes to predict exchanges between.
 

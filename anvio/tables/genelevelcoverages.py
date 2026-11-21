@@ -26,7 +26,7 @@ pp = terminal.pretty_print
 
 
 class TableForGeneLevelCoverages(Table):
-    def __init__(self, db_path, parameters, mode, split_names=None, ignore_splits_name_check=False, run=run, progress=progress):
+    def __init__(self, db_path, parameters, split_names=None, ignore_splits_name_check=False, run=run, progress=progress):
         self.run = run
         self.progress = progress
 
@@ -34,18 +34,9 @@ class TableForGeneLevelCoverages(Table):
         self.parameters = parameters
         self.split_names = split_names
         self.ignore_splits_name_check = ignore_splits_name_check
-        self.mode = mode
 
-        if self.mode == 'INSEQ':
-            self.table_name = t.gene_level_inseq_stats_table_name
-            self.table_structure = t.gene_level_inseq_stats_table_structure
-        elif self.mode == 'STANDARD':
-            self.table_name = t.gene_level_coverage_stats_table_name
-            self.table_structure = t.gene_level_coverage_stats_table_structure
-        else:
-            raise ConfigError("TableForGeneLevelCoverages class is speaking: you came here with an improper 'mode' "
-                              "when you were expected to come with 'INSEQ' or 'STANDARD' modes. Your mode, '%s', "
-                              "is not welcome here :(" % (self.mode))
+        self.table_name = t.gene_level_coverage_stats_table_name
+        self.table_structure = t.gene_level_coverage_stats_table_structure
 
         if not isinstance(parameters, dict):
             raise ConfigError("Parameters must be of type. These are basically the parameters such as "
@@ -145,7 +136,7 @@ class TableForGeneLevelCoverages(Table):
         self.check_params()
 
         self.progress.new("Database bleep bloop")
-        self.progress.update("Recovering %s stats from the genes database..." % self.mode)
+        self.progress.update("Recovering gene-level coverage stats from the genes database...")
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
         raw_data = database.get_table_as_dict(self.table_name)
@@ -174,7 +165,6 @@ class TableForGeneLevelCoverages(Table):
         self.progress.end()
 
         self.run.warning(None, header="GENE LEVEL COVERAGE STATS RECOVERED (yay)", lc="green")
-        self.run.info("Mode", self.mode, mc="red")
         self.run.info("Num genes", len(data))
         self.print_info()
 
@@ -183,7 +173,7 @@ class TableForGeneLevelCoverages(Table):
 
     def store(self, data):
         self.progress.new("Database bleep bloop")
-        self.progress.update("Adding %s stats into the genes database..." % self.mode)
+        self.progress.update("Adding gene-level coverage stats into the genes database...")
 
         db_entries = []
         for gene_callers_id in data:
@@ -212,7 +202,6 @@ class TableForGeneLevelCoverages(Table):
         self.progress.end()
 
         self.run.warning(None, header="GENE LEVEL COVERAGE STATS STORED", lc="green")
-        self.run.info("Mode", self.mode, mc="red")
         self.run.info("Num genes", len(data))
         self.run.info("Num entries", len(db_entries))
         self.print_info()

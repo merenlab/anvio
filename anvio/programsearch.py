@@ -11,9 +11,7 @@ from colored import Fore, Back, Style
 
 import anvio
 import anvio.programs as p
-import anvio.utils as utils
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 
 from anvio.terminal import tabulate
 from anvio.errors import ConfigError
@@ -112,18 +110,6 @@ class ProgramSearch:
         self.display_table()
 
 
-    def parse_description_from_program_call(self, program):
-        log_file = filesnpaths.get_temp_file_path()
-        output = utils.run_command_STDIN('%s --help' % (program.program_path), log_file, '').split('\n')
-
-        try:
-            _, description, _, _ = p.parse_help_output(output)
-        except Exception:
-            return ''
-
-        return description.replace('\n', '')
-
-
     def populate_table(self):
         for program in self.programs.values():
             tags = program.meta_info['tags']['value']
@@ -134,11 +120,6 @@ class ProgramSearch:
             description = program.meta_info['description']['value']
 
             resources = program.meta_info['resources']['value']
-
-            if not len(description):
-                # Yes, it can be learned from parse_description_from_program_call,
-                # No, it is not worth waiting ~1s for.
-                pass
 
             # if there are resources listed for the program, add them at the end of the description
             if len(resources):

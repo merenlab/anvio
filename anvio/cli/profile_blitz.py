@@ -28,19 +28,24 @@ __description__ = ("FAST profiling of BAM files to get gene-, contig-, or genome
 COLLECTION_WLEN_DEFAULT = constants.discov_default_bin_window_length
 CONTIG_MIN_WLEN_DEFAULT = constants.discov_default_contig_min_window_length
 CONTIG_PERCENTAGE_LEN_DEFAULT = constants.discov_default_contig_window_percentage
+MAX_WLEN_DEFAULT = constants.discov_default_contig_max_window_length
 
 @terminal.time_program
 def main():
     args = get_args()
 
-    # set default window size for DisCov if no related arguments are provided
+    # set default window size for discov if no related arguments are provided
     if not args.window_length and not args.window_length_as_percentage:
         if args.collection_txt:
             args.window_length = COLLECTION_WLEN_DEFAULT
         else:
             args.window_length_as_percentage = CONTIG_PERCENTAGE_LEN_DEFAULT
-    if not args.collection_txt and not args.window_length and args.min_window_length is None:
-        args.min_window_length = CONTIG_MIN_WLEN_DEFAULT # enforce a contig-level min-len default of 300 bp
+    # percentage-based windows get default min/max window lengths unless the user provides them
+    if args.window_length_as_percentage:
+        if args.min_window_length is None:
+            args.min_window_length = CONTIG_MIN_WLEN_DEFAULT
+        if args.max_window_length is None:
+            args.max_window_length = MAX_WLEN_DEFAULT
 
     try:
         p = BAMProfilerQuick(args)
@@ -89,10 +94,10 @@ def get_args():
     groupD.add_argument(*anvio.A('gen-window-level-output'), **anvio.K('gen-window-level-output'))
 
     groupE = parser.add_argument_group('DISCOV SCORE', "Parameters related to computing the distribution of coverage score "
-                                        "(DisCov), where S = proportion of windows with coverage and E = proportion of covered "
-                                        "bases within a fold-range of the median nonzero coverage. These can be combined as "
-                                        "DisCov = αS + (1-α)E (linear) or DisCov = S^α * E^(1-α) (geometric). Does not apply "
-                                        "to --gene-mode.")
+                                        "(discov), where S = proportion of windows with coverage (normalized by the proportion expected "
+                                        "if reads were placed randomly) and E = evenness of mean coverage depth across windows. These "
+                                        "are combined into a spread-evenness score C = αS + (1-α)E (linear) or C = S^α * E^(1-α) "
+                                        "(geometric), and discov = min(1, C + detection^2). Does not apply to --gene-mode.")
     groupE.add_argument(*anvio.A('window-length'), **anvio.K('window-length', {'help': f"How long to make the windows "
                         f"for computing the spread metric: S = # windows with coverage / # windows. For genome/bin-level stats, "
                         f"this is the default when no window length parameters are provided, and the default window size is "
@@ -107,11 +112,16 @@ def get_args():
                         f"is {CONTIG_PERCENTAGE_LEN_DEFAULT}."}))
     groupE.add_argument(*anvio.A('min-window-length'), **anvio.K('min-window-length', {'help': f"Use with "
                         f"--window-length-as-percentage to ensure that percentage-based window lengths never fall below this value. "
-                        f"This parameter is set by default to {CONTIG_MIN_WLEN_DEFAULT} for contig-level stats."}))
-    groupE.add_argument(*anvio.A('foldrange-lower'), **anvio.K('foldrange-lower'))
-    groupE.add_argument(*anvio.A('foldrange-upper'), **anvio.K('foldrange-upper'))
+                        f"Whenever percentage-based windows are used, this parameter is set by default to {CONTIG_MIN_WLEN_DEFAULT}."}))
+    groupE.add_argument(*anvio.A('max-window-length'), **anvio.K('max-window-length', {'help': f"Use with "
+                        f"--window-length-as-percentage to ensure that percentage-based window lengths never exceed this value. "
+                        f"This prevents very long sequences (such as large contigs or concatenated genomes) from producing windows "
+                        f"that are too large to be informative. Whenever percentage-based windows are used, this parameter is set "
+                        f"by default to {MAX_WLEN_DEFAULT}. Set it to 0 if you want percentage-based window lengths to be "
+                        f"unbounded (i.e., no maximum)."}))
     groupE.add_argument(*anvio.A('alpha'), **anvio.K('alpha'))
     groupE.add_argument(*anvio.A('discov-formula'), **anvio.K('discov-formula'))
+    groupE.add_argument(*anvio.A('discov-min-reads'), **anvio.K('discov-min-reads'))
 
     return parser.get_args(parser)
 

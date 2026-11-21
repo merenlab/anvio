@@ -161,10 +161,6 @@ gene_level_coverage_stats_table_name      = 'gene_level_coverage_stats'
 gene_level_coverage_stats_table_structure = ['gene_callers_id', 'sample_name', 'mean_coverage', 'detection', 'non_outlier_mean_coverage', 'non_outlier_coverage_std', 'gene_coverage_values_per_nt', 'non_outlier_positions']
 gene_level_coverage_stats_table_types     = [    'numeric'    ,     'text'   ,    'numeric'   ,  'numeric' ,         'numeric'          ,          'numeric'        ,             'blob'           ,          'blob'        ]
 
-gene_level_inseq_stats_table_name      = 'gene_level_inseq_stats'
-gene_level_inseq_stats_table_structure = ['gene_callers_id', 'sample_name', 'mean_coverage', 'insertions', 'insertions_normalized', 'mean_disruption', 'below_disruption', 'gene_coverage_values_per_nt']
-gene_level_inseq_stats_table_types     = [    'numeric'    ,     'text'   ,    'numeric'   ,  'numeric'  ,        'numeric'       ,      'numeric'   ,      'numeric'    ,              'blob'          ]
-
 gene_level_normalized_coverages_table_name      = 'gene_level_normalized_coverages'
 gene_level_normalized_coverages_table_structure = ['gene_callers_id', 'sample_name', 'log1p', 'cpm', 'zscore_raw', 'zscore_log1p', 'zscore_cpm']
 gene_level_normalized_coverages_table_types     = [    'numeric'    ,    'text'    , 'numeric', 'numeric', 'numeric',   'numeric'  ,  'numeric' ]
@@ -239,6 +235,18 @@ zero_coverage_splits_table_types      = ['text', 'text' ]
 zero_coverage_contigs_table_name      = 'zero_coverage_contigs'
 zero_coverage_contigs_table_structure = ['item', 'layer']
 zero_coverage_contigs_table_types     = ['text', 'text' ]
+
+# the number of reads per split and per contig are stored in tables that follow the same structure as
+# view tables, but they are not meant to be displayed. we also need a table to store
+# the splits for which all mapped reads are mostly aligning to other splits, meaning that no reads
+# get assigned to them (ie, they have a read count of 0) since these are not included in the
+# zero_coverage_splits table above
+num_reads_splits_table_name  = 'num_reads_splits'
+num_reads_contigs_table_name = 'num_reads_contigs'
+
+zero_read_splits_table_name      = 'zero_read_splits'
+zero_read_splits_table_structure = ['item', 'layer']
+zero_read_splits_table_types     = ['text', 'text' ]
 
 protein_abundances_table_name        = 'protein_abundances'
 protein_abundances_table_structure   = ['protein_id', 'reference_source', 'reference_id', 'sample_name', 'abundance_value']
@@ -415,6 +423,9 @@ table_requires_unique_entry_id = {'self': False,
                                   'variability_contigs': True,
                                   'zero_coverage_splits': False,
                                   'zero_coverage_contigs': False,
+                                  'num_reads_splits': True,
+                                  'num_reads_contigs': True,
+                                  'zero_read_splits': False,
                                   'gene_cluster_frequencies': True,
                                   'gene_cluster_presence_absence': True,
                                   'clusters': False,
@@ -469,7 +480,7 @@ table_requires_unique_entry_id = {'self': False,
                                   nucleotide_additional_data_table_name: True,
                                   amino_acid_additional_data_table_name: True,
                                   gene_level_coverage_stats_table_name: True,
-                                  gene_level_inseq_stats_table_name: True,
+                                  'gene_level_inseq_stats': True,
                                   gene_level_normalized_coverages_table_name: True,
                                   trna_seed_feature_table_name: False,
                                   trna_gene_hits_table_name: False,

@@ -5,6 +5,7 @@
 import os
 import sys
 import pysam
+import bisect
 import numpy as np
 import hashlib
 
@@ -654,6 +655,7 @@ class Coverage:
         self.detection = 0.0
         self.mean_Q2Q3 = 0.0
         self.num_reads = 0
+        self.num_reads_per_split = None
 
         self.read_iterator_dict = {
             'fetch': self._fetch_iterator,
@@ -678,7 +680,7 @@ class Coverage:
 
 
     def run(self, bam, contig_or_split, start=None, end=None, read_iterator='fetch',
-            max_coverage=None, skip_coverage_stats=False, **kwargs):
+            max_coverage=None, skip_coverage_stats=False, split_boundaries=None, **kwargs):
         """Loop through the bam pileup and calculate coverage over a defined region of a contig or split
 
         Parameters
@@ -709,6 +711,12 @@ class Coverage:
         skip_coverage_stats : bool, False
             Should the call to process_c be skipped?
 
+        split_boundaries : list of (start, end) tuples, None
+            If provided, each read is assigned to exactly one of these regions (i.e., the splits of a
+            contig, sorted by their start positions), and self.num_reads_per_split will hold the number
+            of reads assigned to each region, in the same order. See `get_split_index_for_read` for how
+            reads are assigned.
+
         **kwargs : **kwargs
             kwargs are passed to the method chosen
         """
@@ -734,6 +742,12 @@ class Coverage:
         # a coverage array the size of the defined range is allocated in memory
         c = np.zeros(end - start).astype(int)
 
+        if split_boundaries:
+            split_starts = [split_start for split_start, _ in split_boundaries]
+            num_reads_per_split = [0] * len(split_boundaries)
+        else:
+            num_reads_per_split = None
+
         try:
             read_iterator = self.read_iterator_dict[read_iterator]
         except KeyError:
@@ -746,9 +760,13 @@ class Coverage:
                 for start, end in read.get_blocks():
                     c[start:end] += 1
 
+            if split_boundaries:
+                num_reads_per_split[self.get_split_index_for_read(read, split_boundaries, split_starts)] += 1
+
             self.num_reads += 1
 
         self.c = c
+        self.num_reads_per_split = num_reads_per_split
 
         if max_coverage is not None:
             if np.max(self.c) > max_coverage:
@@ -762,6 +780,46 @@ class Coverage:
 
             if not skip_coverage_stats:
                 self.process_c(self.c)
+
+
+    def get_split_index_for_read(self, read, split_boundaries, split_starts):
+        """Returns the index of the split that contains most of the aligned bases of a read.
+
+        Aligned bases are those in the aligned blocks of the read (i.e., the same ones that contribute
+        to coverage). If multiple splits contain the same, largest number of aligned bases, the read is
+        assigned to the earliest of them (i.e., the split in which the alignment starts, when there is
+        an exact tie between two splits).
+
+        Parameters
+        ==========
+        read : pysam.AlignedSegment
+            The read to assign.
+        split_boundaries : list of (start, end) tuples
+            Split boundaries in contig coordinates, sorted by their start positions.
+        split_starts : list of int
+            Start positions of the splits in `split_boundaries`, provided separately to avoid
+            recomputing them for every read.
+        """
+
+        first_split_index = bisect.bisect_right(split_starts, read.reference_start) - 1
+
+        # the vast majority of reads will not cross a split boundary
+        if read.reference_end is None or read.reference_end <= split_boundaries[first_split_index][1]:
+            return first_split_index
+
+        num_aligned_bases = {}
+        for block_start, block_end in read.get_blocks():
+            split_index = bisect.bisect_right(split_starts, block_start) - 1
+            while block_start < block_end and split_index < len(split_boundaries):
+                overlap_end = min(block_end, split_boundaries[split_index][1])
+                num_aligned_bases[split_index] = num_aligned_bases.get(split_index, 0) + overlap_end - block_start
+                block_start = overlap_end
+                split_index += 1
+
+        if not num_aligned_bases:
+            return first_split_index
+
+        return max(num_aligned_bases, key=lambda split_index: (num_aligned_bases[split_index], -split_index))
 
 
     def _fetch_iterator(self, bam, contig_name, start, end):
