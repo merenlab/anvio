@@ -1410,12 +1410,12 @@ Drawer.prototype.draw_layer_backgrounds = function() {
             _opacity = parseFloat(this.settings['background-opacity']);
         }
 
-        // diverging bar layers get a split background: left color below the center, right color above it
+        // diverging bar and line layers get a split background: left color below the center, right color above it
         var center = layer.get_view_attribute('center');
-        var is_diverging_bar = (layer.is_numerical && layer.get_visual_attribute('type') == 'bar' && center !== '' && center !== undefined && !isNaN(parseFloat(center)));
+        var is_diverging_bar_or_line = (layer.is_numerical && ['bar', 'line'].includes(layer.get_visual_attribute('type')) && center !== '' && center !== undefined && !isNaN(parseFloat(center)));
 
         // draw backgrounds
-        if (this.settings['tree-type']=='phylogram' && is_diverging_bar)
+        if (this.settings['tree-type']=='phylogram' && is_diverging_bar_or_line)
         {
             var center_x = this.get_diverging_center_position(layer);
 
@@ -1455,7 +1455,7 @@ Drawer.prototype.draw_layer_backgrounds = function() {
         }
 
 
-        if (this.settings['tree-type'] == 'circlephylogram' && is_diverging_bar)
+        if (this.settings['tree-type'] == 'circlephylogram' && is_diverging_bar_or_line)
         {
             var _first = this.tree.leaves[0];
             var _last = this.tree.leaves[this.tree.leaves.length - 1];
@@ -1813,7 +1813,11 @@ Drawer.prototype.draw_numerical_layers = function() {
             }
         }
 
-        if (numeric_cache.length > 0) {
+        if (numeric_cache.length > 0 && is_diverging && layer.get_visual_attribute('type') == 'line') {
+            // diverging lines are colored like diverging bars: right color above the center, left color below it
+            this.draw_diverging_line_path(layer, numeric_cache.join(' '));
+        }
+        else if (numeric_cache.length > 0) {
             var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             path.setAttribute('shape-rendering', 'auto');
             path.setAttribute('pointer-events', 'none');
