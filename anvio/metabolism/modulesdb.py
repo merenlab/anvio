@@ -157,7 +157,7 @@ class ModulesDatabase(KeggContext):
         elif current_data_name == "DEFINITION":
             # example format: (K01647,K05942) (K01681,K01682) (K00031,K00030) (K00164+K00658+K00382,K00174+K00175-K00177-K00176)
             # another example: (M00161,M00163) M00165
-            knums = [x for x in re.split('\(|\)|,| |\+|-',data_vals) if x]
+            knums = [x for x in re.split(r'\(|\)|,| |\+|-',data_vals) if x]
             for k in knums:
                 if k[0] not in ['K','M'] or len(k) != 6:
                     is_ok = False
@@ -167,7 +167,7 @@ class ModulesDatabase(KeggContext):
             # example format: K00234,K00235,K00236,K00237
             # more complex example: (K00163,K00161+K00162)+K00627+K00382-K13997
             # another example:  (M00161         [ie, from (M00161  Photosystem II)]
-            knums = [x for x in re.split('\(|\)|,|\+|-', data_vals) if x]
+            knums = [x for x in re.split(r'\(|\)|,|\+|-', data_vals) if x]
             for k in knums:
                 if k[0] not in ['K','M'] or len(k) != 6:
                     is_ok = False
@@ -178,7 +178,7 @@ class ModulesDatabase(KeggContext):
                 corrected_vals = split_data_vals[0]
                 corrected_def = split_data_vals[1]
                 # double check that we don't have a knum in the new definition
-                if re.match("K\d{5}",corrected_def):
+                if re.match(r"K\d{5}",corrected_def):
                     corrected_vals = "".join([corrected_vals,corrected_def])
                     corrected_def = None
                 is_corrected = True
@@ -193,7 +193,7 @@ class ModulesDatabase(KeggContext):
                 is_corrected = True
         elif current_data_name == "REACTION":
             # example format: R01899+R00268,R00267,R00709
-            rnums = [x for x in re.split(',|\+', data_vals) if x]
+            rnums = [x for x in re.split(r',|\+', data_vals) if x]
             for r in rnums:
                 if r[0] != 'R' or len(r) != 6:
                     is_ok = False
@@ -277,7 +277,7 @@ class ModulesDatabase(KeggContext):
         if anvio.DEBUG:
             self.progress.reset()
             self.run.info("[DEBUG] Parsing line", line, mc='red', lc='yellow')
-        fields = re.split('\s{2,}', line)
+        fields = re.split(r'\s{2,}', line)
         data_vals = None
         data_def = None
         line_entries = []
@@ -327,7 +327,7 @@ class ModulesDatabase(KeggContext):
         data_types_to_split = ["ORTHOLOGY","REACTION"] # lines that fall under these categories need to have data_vals split on comma
         if current_data_name in data_types_to_split:
             # here we should NOT split on any commas within parentheses
-            vals = [x for x in re.split('\(|\)|,|\+|-', data_vals) if x]
+            vals = [x for x in re.split(r'\(|\)|,|\+|-', data_vals) if x]
             for val in vals:
                 line_entries.append((current_data_name, val, data_def, line_num))
         else:
@@ -444,7 +444,7 @@ class ModulesDatabase(KeggContext):
             # every enzyme in the module definition needs an orthology line
             mod_definition = " ".join(mod_definition)
             # anything that is not (),-+ should be converted to spaces, then we can split on the spaces to get the accessions
-            mod_definition = re.sub('[\(\)\+\-,]', ' ', mod_definition).strip()
+            mod_definition = re.sub(r'[\(\)\+\-,]', ' ', mod_definition).strip()
             acc_list = re.split(r'\s+', mod_definition)
             accessions_in_def = set(acc_list)
             # remove any accession that is for a module (ie, not an enzyme)
@@ -1426,7 +1426,7 @@ class ModulesDatabase(KeggContext):
         can also contain additional category "branches". An example of this is in the "RNases"
         category of the "Ribosome biogenesis" hierarchy. The category contains RNases such as
         "K14812  NGL2; RNA exonuclease NGL2 [EC:3.1.-.-]", but also includes a category of "RNase
-        MRP" subunits, including "K01164  POP1; ribonuclease P\/MRP protein subunit POP1
+        MRP" subunits, including "K01164  POP1; ribonuclease P/MRP protein subunit POP1
         [EC:3.1.26.5]". With the parameter, `collapse_mixed_branches`, set to the default of True,
         categories in such "mixed" branches are collapsed out of existence: subunit orthologs are
         placed in "RNases" rather than "RNase MRP", which is removed.
