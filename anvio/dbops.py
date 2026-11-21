@@ -4423,33 +4423,6 @@ class ProfileSuperclass(object):
 
         self.progress.end()
 
-        # learn the number of mapped reads and set it in a nice variable VERY CAREFULLY (blank profiles don't have it,
-        # and some ancient anvi'o databases may be lacking it).
-        if self.p_meta['blank']:
-            self.num_mapped_reads_per_sample = None
-        else:
-            if self.p_meta['merged']:
-                if 'total_reads_mapped' not in self.p_meta:
-                    self.num_mapped_reads_per_sample = None
-                else:
-                    total_reads_mapped = [int(num_reads) for num_reads in self.p_meta['total_reads_mapped'].split(',')]
-                    self.num_mapped_reads_per_sample = {self.p_meta['samples'][i]: total_reads_mapped[i] for i in range(0, len(self.p_meta['samples']))}
-            else:
-                sample_name = self.p_meta['samples'][0]
-
-                # create a copy of the args to avoid some misunderstanding downstream when THIS class is initiated with
-                # a gene_mode = True statement. Here we are trying to learn the layer additional data from a profile
-                # database. But if genes_mod = True, TableForLayerAdditionalData class will try to initialize for a genes
-                # database rather than a profile database. this workaround addresses that issue:
-                args = copy.deepcopy(self.args)
-                args.gene_mode = False
-                keys, data = TableForLayerAdditionalData(args, p=self.progress).get()
-
-                if 'total_reads_mapped' not in data[sample_name]:
-                    self.num_mapped_reads_per_sample = None
-                else:
-                    self.num_mapped_reads_per_sample = {sample_name: int(data[sample_name]['total_reads_mapped'])}
-
         profile_db.disconnect()
 
         self.p_meta['available_item_orders'], self.item_orders = get_item_orders_from_db(self.profile_db_path)
