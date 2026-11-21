@@ -1748,7 +1748,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         ProfileSuperclass.__init__(self, self.args)
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
-        self.init_gene_level_coverage_stats_dicts(compute_gene_level_normalized_coverages=A('compute_gene_level_normalized_coverages') or False)
+        self.init_gene_level_coverage_stats_dicts(compute_gene_level_normalized_coverages=not A('skip_computing_gene_level_normalized_coverages'))
 
         # the gene_level_coverage_stats_dict contains a mixture of data, some of which are not relevant to
         # our purpose of generating views for the interactive interface. here we explicitly list keys that

@@ -105,7 +105,7 @@ def main():
 
             profile.init_gene_level_coverage_stats_dicts(outliers_threshold=args.outliers_threshold,
                                                          zeros_are_outliers=args.zeros_are_outliers,
-                                                         compute_gene_level_normalized_coverages=args.compute_gene_level_normalized_coverages)
+                                                         compute_gene_level_normalized_coverages=not args.skip_computing_gene_level_normalized_coverages)
 
             run.info('Genes database for %s' % bin_name, genes_db_path)
     except ConfigError as e:
@@ -137,10 +137,10 @@ def get_args():
                                         alright.")
     groupC.add_argument(*anvio.A('zeros-are-outliers'), **anvio.K('zeros-are-outliers'))
     groupC.add_argument(*anvio.A('outliers-threshold'), **anvio.K('outliers-threshold'))
+    groupC.add_argument(*anvio.A('skip-computing-gene-level-normalized-coverages'), **anvio.K('skip-computing-gene-level-normalized-coverages'))
 
     groupD = parser.add_argument_group('PARAMETERS OF CONVENIENCE', "They say they save lives.")
     groupD.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
-    groupD.add_argument(*anvio.A('compute-gene-level-normalized-coverages'), **anvio.K('compute-gene-level-normalized-coverages'))
 
     return parser.get_args(parser)
 

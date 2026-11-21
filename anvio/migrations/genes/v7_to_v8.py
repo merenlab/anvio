@@ -50,8 +50,8 @@ def migrate(db_path):
     run.info_single(f"Your genes db is now version {next_version}. A new empty table "
                     f"'gene_level_normalized_coverages' has been added to store normalized "
                     f"gene coverage values (log1p, cpm, zscore_raw, zscore_log1p, zscore_cpm). "
-                    f"Run anvi-interactive with --gene-mode --compute-gene-level-normalized-coverages "
-                    f"to populate it.", nl_after=1, nl_before=1, mc='green')
+                    f"Anvi'o will populate it the next time you run anvi-interactive with --gene-mode "
+                    f"or anvi-gen-gene-level-stats-databases.", nl_after=1, nl_before=1, mc='green')
 
 
 if __name__ == '__main__':

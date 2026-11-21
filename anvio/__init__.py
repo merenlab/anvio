@@ -1820,23 +1820,27 @@ D = {
                      "exceeds the length of the contig, then the output will include the sequence until the end "
                      "of the contig."}
               ),
-    'compute-gene-level-normalized-coverages': (
-            ['--compute-gene-level-normalized-coverages'],
+    'skip-computing-gene-level-normalized-coverages': (
+            ['--skip-computing-gene-level-normalized-coverages'],
             {'default': False,
              'action': 'store_true',
-             'help': "When this flag is used in gene mode, anvi'o will compute five normalizations of "
-                     "the non_outlier_mean_coverage values for each gene in each sample and store them "
-                     "in the genes database: (1) log1p: log(x + 1), which reduces dynamic range; "
-                     "(2) cpm: coverage per million mapped reads, which accounts for differences in "
-                     "sequencing depth across samples; (3) zscore_raw: per-gene z-score of raw "
+             'help': "By default, when anvi'o generates gene-level coverage stats for a genes database, it "
+                     "also computes five normalizations of the non_outlier_mean_coverage values for each "
+                     "gene in each sample, stores them in the genes database, and makes them available "
+                     "as additional views in gene mode: (1) log1p: log(x + 1), which reduces dynamic range; "
+                     "(2) cpm: mean coverage depth per million mapped reads, which accounts for differences "
+                     "in sequencing depth across samples; (3) zscore_raw: per-gene z-score of raw "
                      "non_outlier_mean_coverage across samples; (4) zscore_log1p: per-gene z-score "
                      "of log1p-transformed values; (5) zscore_cpm: per-gene z-score of cpm-normalized "
-                     "values. Z-scores capture how many standard deviations a gene's coverage in a "
-                     "given sample deviates from that gene's mean coverage across all samples -- they "
-                     "are informative for identifying genes with differential coverage, but are not "
-                     "comparable between genes within the same sample. Once computed and stored in the "
-                     "genes database, normalized views will be available automatically in subsequent "
-                     "gene mode runs without needing this flag again."}
+                     "values. Z-scores show how many standard deviations a gene's coverage in a given "
+                     "sample deviates from that gene's mean coverage across all samples. They are not "
+                     "comparable between genes within the same sample. With transcriptomic data they "
+                     "reflect each gene's own expression pattern; with metagenomic data, genes of a "
+                     "single population tend to follow the population's abundance, so z-scores mostly "
+                     "help spot genes whose coverage deviates from the rest of their genome. Using this "
+                     "flag will prevent anvi'o from generating these data, and these views will not be "
+                     "available. If the genes database already contains them from an earlier run, they "
+                     "will still be shown."}
                 ),
     'gene-mode': (
             ['--gene-mode'],

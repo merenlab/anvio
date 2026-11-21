@@ -4611,10 +4611,11 @@ class ProfileSuperclass(object):
         gene_callers_ids = sorted(self.gene_level_coverage_stats_dict.keys())
 
         if len(sample_names) == 1:
-            self.run.warning(f"You asked for gene-level normalized coverage stats but your profile database "
-                             f"only has one sample ('{sample_names[0]}'). Z-scores are computed per gene "
-                             f"across samples, so with a single sample every z-score value will be 0.0, "
-                             f"which is not informative. Anvi'o will store them anyway.")
+            self.run.warning(f"Your profile database only has one sample ('{sample_names[0]}'). Normalized "
+                             f"gene-level coverage stats will be computed and stored, but since z-scores are "
+                             f"computed per gene across samples, every z-score value will be 0.0, which is not "
+                             f"informative. If you don't want these data in your genes database, you can remove "
+                             f"it and run the same command again with `--skip-computing-gene-level-normalized-coverages`.")
 
         self.progress.new("Computing gene-level normalized coverage stats")
         self.progress.update("Building coverage matrix from non_outlier_mean_coverage values...")

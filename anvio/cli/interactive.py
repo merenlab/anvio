@@ -135,7 +135,7 @@ def get_args():
     groupD = parser.add_argument_group('GENE MODE', "Gene mode related parameters.")
     groupD.add_argument(*anvio.A('gene-mode'), **anvio.K('gene-mode'))
     groupD.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
-    groupD.add_argument(*anvio.A('compute-gene-level-normalized-coverages'), **anvio.K('compute-gene-level-normalized-coverages'))
+    groupD.add_argument(*anvio.A('skip-computing-gene-level-normalized-coverages'), **anvio.K('skip-computing-gene-level-normalized-coverages'))
 
     groupE = parser.add_argument_group('VISUALS RELATED', "Parameters that give access to various adjustements regarding\
                                                            the interface.")
