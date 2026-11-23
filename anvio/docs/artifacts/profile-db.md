@@ -112,7 +112,7 @@ The histograms include the same reads as the number of reads tables described ab
 
 %(anvi-profile)s checks if the input BAM file contains the information used to compute percent identities by examining a sample of reads -- if less than 1%% are lacking this information, then identity histograms are computed.
 
-The self table key `identity_histograms_stored` tells you whether the table contains data. It is `False` (0) for profiles that don't pass the aforementioned sanity check, as well as for blank profiles and for auxiliary data files migrated from version 2. 
+The self table key `identity_histograms_stored` tells you whether the table contains data. It is `False` (0) for profiles that don't pass the aforementioned sanity check, as well as for blank profiles and for auxiliary data files migrated from version 2.
 
 %(anvi-merge)s merges the histograms of single profiles only if all of them have histograms (if only some of them do, it warns the user and merges the profiles without histograms), and it refuses to merge profiles whose histograms were built with different bins. %(anvi-split)s copies the histograms of the splits in each bin.
 
