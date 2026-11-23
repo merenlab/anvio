@@ -23,6 +23,9 @@ INFO "[$TEST] Unpacking"
 tar -zxvf P214-MERGED.tar.gz && cd P214-MERGED/
 INFO "[$TEST] Migrating databases"
 anvi-migrate *db --migrate-safely
+# an AUXILIARY-DATA.db created during the profile db migration (from AUXILIARY-DATA.h5) is not in the
+# list of files above, so it is migrated separately
+if [ -f AUXILIARY-DATA.db ]; then anvi-migrate AUXILIARY-DATA.db --migrate-safely; fi
 INFO "[$TEST] Downloading state"
 curl -L http://merenlab.org/files/P-214-state.json -o P-214-state.json
 INFO "[$TEST] Importing state"
@@ -52,7 +55,8 @@ INFO "[$TEST] Unpacking"
 tar -zxvf TARA_ANW_MAG_00006.tar.gz && cd TARA_ANW_MAG_00006
 gzip -d AUXILIARY-DATA.h5.gz
 INFO "[$TEST] Migrating databases"
-anvi-migrate PROFILE.db CONTIGS.db --migrate-quickly
+# the profile db migration turns AUXILIARY-DATA.h5 into an AUXILIARY-DATA.db that needs migrating, too
+anvi-migrate PROFILE.db CONTIGS.db AUXILIARY-DATA.db --migrate-quickly
 INFO "[$TEST] Running the interactive interface (--dry)"
 anvi-interactive -p PROFILE.db -c CONTIGS.db --dry
 INFO "[$TEST] Setting up SCG taxonomy databases"
