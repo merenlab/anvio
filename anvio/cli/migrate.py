@@ -16,6 +16,10 @@ from anvio.migrations import migration_scripts
 from anvio.version import versions_for_db_types
 from anvio.errors import ConfigError, FilesNPathsError
 
+# migration scripts live in folders under anvio/migrations/ named after the db_type of the artifact,
+# except for db types whose names do not make good folder names, which are mapped here
+MIGRATION_DIR_FOR_ARTIFACT_TYPE = {'auxiliary data for coverages': 'auxiliary'}
+
 
 __description__ = "Migrates any anvi'o artifact, whether it is a database or a config file, to a newer version. Pure magic."
 __authors__ = ['meren', 'ozcan', 'ekiefl', 'ivagljiva', 'semiller10', 'mschecht']
@@ -240,17 +244,19 @@ class Migrater(object):
         else:
             temp_file_path = None
 
+        migration_dir = MIGRATION_DIR_FOR_ARTIFACT_TYPE.get(self.artifact_type, self.artifact_type)
+
         for i in range(self.artifact_version, self.target_version):
             script_name = "v%s_to_v%s" % (i, i + 1)
 
-            if not self.artifact_type in migration_scripts or not script_name in migration_scripts[self.artifact_type]:
+            if not migration_dir in migration_scripts or not script_name in migration_scripts[migration_dir]:
                 raise ConfigError("Anvi'o can not find a migrate script required for this operation. (Artifact Type: %s, Script name: %s) " % (self.artifact_type, script_name))
 
             tasks.append(script_name)
 
         for script_name in tasks:
             try:
-                migration_scripts[self.artifact_type][script_name].migrate(self.artifact_path)
+                migration_scripts[migration_dir][script_name].migrate(self.artifact_path)
             except Exception as e:
                 if temp_file_path:
                     shutil.move(self.artifact_path, self.artifact_path + '.broken')
