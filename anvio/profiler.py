@@ -2003,17 +2003,18 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.contig_lengths = self.bam.lengths
 
         if self.min_percent_identity:
-            # We will permit as many as 1% of sampled reads to be missing an MD tag, for whatever
-            # crazy mapping reason, although it is most probable that if 1 read is missing an MD
-            # tag, they all are.
+            # We will permit as many as 1% of sampled reads to lack the information needed to
+            # determine their percent identity, for whatever crazy mapping reason, although it is
+            # most probable that if 1 read is missing it, they all are.
             requirement = lambda x: sum(x) / len(x) >= 0.99
 
-            if not self.bam.reads_have_MD_tags(require=requirement):
-                raise ConfigError("Your BAM file has reads that do not have MD "
-                                  "tags, which give essential information about the "
-                                  "reference bases in alignments. Unfortunately, "
-                                  "this is required to use --min-percent-identity. "
-                                  "Please remove this flag or redo your mapping.")
+            if not self.bam.reads_have_identity_information(require=requirement):
+                raise ConfigError("Anvi'o can't determine the percent identity of many of the reads in your "
+                                  "BAM file :/ This requires reads to have an MD tag or an NM tag (or a CIGAR "
+                                  "string that uses the '=' and 'X' operations instead of 'M'), which give "
+                                  "essential information about mismatches between reads and the reference. "
+                                  "Unfortunately, this is required to use --min-percent-identity. Please "
+                                  "remove this flag or redo your mapping.")
 
         utils.check_contig_names(self.contig_names)
 

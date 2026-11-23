@@ -347,12 +347,13 @@ class BAMFileObject(pysam.AlignmentFile):
             yield read
 
 
-    def reads_have_MD_tags(self, num_reads=10000, require=all):
-        """A holistic approach to testing if reads in the BAM file have MD tags
+    def reads_have_identity_information(self, num_reads=10000, require=all):
+        """A holistic approach to testing if the percent identity of reads in the BAM file can be determined
 
-        Tests the first `num_reads` in the file to see if they contain the MD tag.  The MD tag
-        provides information about the reference bases in the aligned segment and are essential for
-        some read operations, such as calculating percent ID of a read to its reference.
+        Tests the first `num_reads` mapped reads in the file to see if their percent identity to the
+        reference can be calculated by `get_read_identity_counts`, which requires an MD tag, an NM
+        tag, or =/X operations in the CIGAR string (as well as tags that are consistent with the
+        CIGAR string).
 
         Parameters
         ==========
@@ -361,35 +362,35 @@ class BAMFileObject(pysam.AlignmentFile):
 
         require : function, all
             function that takes list of bool values and returns single bool. E.g. built-ins all or
-            any. The default is all, which means all of the sampled reads are required to have the
-            MD tag
+            any. The default is all, which means the percent identity of all of the sampled reads
+            must be computable
 
         Returns
         =======
         output : bool
-            require(has_MD), where has_MD is a list of booleans (length has_MD) that are True if the
-            read has the MD tag and False otherwise
+            require(has_identity), where has_identity is a list of booleans (one per sampled read)
+            that are True if the percent identity of the read can be determined and False otherwise
         """
 
-        has_MD = []
+        has_identity = []
         reads_checked = 0
 
         for contig_name in self.references:
             for read in self.fetch_only(contig_name):
                 if read.cigartuples is None:
-                    # if it didn't map we forgive it for not having an MD tag
+                    # if it didn't map we forgive it for not having identity information
                     continue
 
-                has_MD.append(read.has_tag('MD'))
+                has_identity.append(get_read_identity_counts(read)[1] is not None)
 
                 reads_checked += 1
                 if reads_checked == num_reads:
-                    return require(has_MD)
+                    return require(has_identity)
 
         if reads_checked == 0:
             return True
 
-        return require(has_MD)
+        return require(has_identity)
 
 
 class Read:
