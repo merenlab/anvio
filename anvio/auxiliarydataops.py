@@ -140,6 +140,40 @@ class AuxiliaryDataForSplitCoverages(object):
         self.db.set_meta_value('identity_histograms_stored', True)
 
 
+    def identity_histograms_stored(self):
+        """Returns True if this database contains read identity histograms"""
+
+        return bool(self.db.get_meta_value('identity_histograms_stored', return_none_if_not_in_table=True))
+
+
+    def get_identity_histogram_bins(self):
+        """Returns the bamops.ReadIdentityBins the stored histograms were built with, or None if there are none"""
+
+        if not self.identity_histograms_stored():
+            return None
+
+        # imported here, because bamops imports dbops, which imports this module
+        from anvio.bamops import ReadIdentityBins
+
+        bins = ReadIdentityBins(min_identity=float(self.db.get_meta_value('identity_histogram_min', try_as_type_int=False)),
+                                bin_width=float(self.db.get_meta_value('identity_histogram_bin_width', try_as_type_int=False)))
+
+        num_bins = self.db.get_meta_value('identity_histogram_num_bins')
+        if bins.num_bins != num_bins:
+            raise AuxiliaryDataError(f"The auxiliary database at '{self.db_path}' says its read identity histograms have "
+                                     f"{num_bins} bins, but its bin parameters give {bins.num_bins} bins :/")
+
+        return bins
+
+
+    def get_num_reads_without_identity(self):
+        """Returns the number of reads per sample whose percent identity could not be determined (empty if not stored)"""
+
+        if not self.identity_histograms_stored():
+            return {}
+
+        return json.loads(self.db.get_meta_value('num_reads_without_identity', try_as_type_int=False))
+
 
     def get_all_known_split_names(self):
         return set(self.db.get_single_column_from_table(t.split_coverages_table_name, 'split_name'))
@@ -202,6 +236,40 @@ class AuxiliaryDataForSplitCoverages(object):
             split_coverage[sample_name] = coverage_array
 
         return split_coverage
+
+
+    def get_identity_histograms(self, split_name):
+        """Returns the read identity histograms of a split in all samples
+
+        Returns
+        =======
+        identity_histograms : dict
+            {sample_name: (num_below_min, histogram), ...}, where histogram is a 1D numpy array of read
+            counts per bin (see self.get_identity_histogram_bins). Empty if this database has no
+            identity histograms (see self.identity_histograms_stored).
+        """
+
+        if not self.identity_histograms_stored():
+            return {}
+
+        cursor = self.db._exec(f"SELECT sample_name, num_below_min, histogram FROM {t.split_identity_histograms_table_name} WHERE split_name = ?", (split_name, ))
+        rows = cursor.fetchall()
+
+        if len(rows) == 0:
+            raise AuxiliaryDataError(f"The auxiliary database at '{self.db_path}' does not have read identity histograms "
+                                     f"for the split '{split_name}'.")
+
+        identity_histograms = {}
+        for sample_name, num_below_min, blob in rows:
+            if isinstance(blob, int):
+                # a histogram of zeros, stored as the number of bins (see self.append_identity_histogram)
+                histogram = np.zeros(blob, dtype=IDENTITY_HISTOGRAM_DTYPE)
+            else:
+                histogram = utils.convert_binary_blob_to_numpy_array(blob, dtype=IDENTITY_HISTOGRAM_DTYPE)
+
+            identity_histograms[sample_name] = (num_below_min, histogram)
+
+        return identity_histograms
 
 
     def close(self):
