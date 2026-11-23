@@ -107,7 +107,8 @@ class Contig:
         splits_in_order = sorted(self.splits, key=lambda split: split.start)
         split_boundaries = [(split.start, split.end) for split in splits_in_order]
 
-        if min_percent_identity is None:
+        # a cutoff of 0 means no filtering, just like in the SNV and SCV passes (see Auxiliary)
+        if not min_percent_identity:
             self.coverage.run(
                 bam,
                 self,
