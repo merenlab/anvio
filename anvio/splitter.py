@@ -622,12 +622,25 @@ class BinSplitter(summarizer.Bin, XSplitter):
                                                                                    self.summary.a_meta['contigs_db_hash'],
                                                                                    db_variant=self.db_variant)
 
+        identity_histograms_stored = parent_profile_auxiliary.identity_histograms_stored()
+
         for split_name in self.split_names:
             sample_coverages = parent_profile_auxiliary.get(split_name)
             for sample_name in sample_coverages:
                 bin_profile_auxiliary.append(split_name, sample_name, sample_coverages[sample_name])
 
+            if identity_histograms_stored:
+                for sample_name, (num_below_min, histogram) in parent_profile_auxiliary.get_identity_histograms(split_name).items():
+                    bin_profile_auxiliary.append_identity_histogram(split_name, sample_name, num_below_min, histogram)
+
         bin_profile_auxiliary.store()
+
+        if identity_histograms_stored:
+            # the number of reads without identity information is a per-sample total for the entire parent
+            # profile (it is not known per split), so it is copied as is rather than subset to this bin
+            bin_profile_auxiliary.set_identity_histogram_meta(parent_profile_auxiliary.get_identity_histogram_bins(),
+                                                              parent_profile_auxiliary.get_num_reads_without_identity())
+
         bin_profile_auxiliary.close()
         parent_profile_auxiliary.close()
 
