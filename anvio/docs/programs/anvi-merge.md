@@ -16,6 +16,8 @@ anvi-merge -c cool_contigs.db \
 
 This will put all of the output files (the final %(profile-db)s as well as a %(misc-data-items-order)s which is the result of your hierarchical clustering and describes the order to display your contigs in) into the folder `cool_contigs_merge `.
 
+The auxiliary data files (`AUXILIARY-DATA.db`) of the single profiles are merged as well. If the single profiles include read identity histograms (see %(anvi-profile)s), the merged profile will include them only if all single profiles have them. Otherwise, `anvi-merge` will let you know which samples lack them, and continue merging everything else.
+
 
 ## Other Parameters
 

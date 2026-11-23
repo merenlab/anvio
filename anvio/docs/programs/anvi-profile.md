@@ -3,9 +3,11 @@ This program **creates a %(single-profile-db)s from a %(bam-file)s and %(contigs
 Once you have a %(single-profile-db)s, you can run programs like %(anvi-cluster-contigs)s, %(anvi-estimate-metabolism)s, and %(anvi-gen-gene-level-stats-databases)s, as well as use the interactive interface with %(anvi-interactive)s. If you want to run these same contigs against multiple BAM files (because you have multiple samples), you'll combine your %(single-profile-db)ss into a %(profile-db)s after you've created them all using %(anvi-merge)s. See the pages for %(single-profile-db)s or %(profile-db)s for more you can do with these artifacts.
 
 In short, this program runs various analyses on the contigs in your %(contigs-db)s and how they relate to the sample information stored in the %(bam-file)s you provided. It then stores this information into a %(single-profile-db)s. Specifically, this program calculates
-* coverage per nucleotide position (if you're unsure what coverage refers to, check out [this page](http://merenlab.org/vocabulary/#coverage))
+* coverage per nucleotide position (if you're unsure what coverage refers to, check out [this page](http://merenlab.org/vocabulary/#coverage)), which gets stored in an accompanying auxiliary database (`AUXILIARY-DATA.db`)
+)
 * single-nucleotide, single-codon, and single-amino acid variants (You can find all of those terms on the vocab page linked above, as well as a more detailed explaination [here](http://merenlab.org/2015/07/20/analyzing-variability/#an-intro-to-single-nucleotidecodonamino-acid-variation))
 * structural variants such as insertions or deletions
+* histograms of the percent identity of reads to the reference, for each split (see [below](#read-identity-histograms)). These also gets stored in the auxiliary database.
 
 ## Basic Usage
 
@@ -54,6 +56,16 @@ Before profiling begins, %(anvi-profile)s automatically scans the BAM index to i
 
 This is particularly useful when profiling against a large reference database (such as a collection of MAGs) where most contigs in the %(contigs-db)s will have zero coverage from any individual metagenome. By skipping these contigs early, anvi'o avoids loading unnecessary data into memory. If you also provide a `--contigs-of-interest` file, anvi'o will take the intersection of contigs with coverage and your contigs of interest.
 
+### Read identity histograms
+
+While profiling, %(anvi-profile)s also counts how many reads in each split have a given percent identity to the reference, and stores these counts as a histogram per split in the auxiliary data file (`AUXILIARY-DATA.db`) next to the resulting %(single-profile-db)s. Histogram bins are 0.5%% wide and start at 80%%, so that the first bin holds reads with a percent identity of at least 80%% and less than 80.5%%, and so on, up to the bin that starts at 99.5%%. A final bin holds the reads that are 100%% identical to the reference. Reads with a percent identity below 80%% are not in any bin, but their number is stored for each split as well.
+
+The percent identity of a read is the percentage of its aligned positions (i.e., those consumed by both the read and the reference) where the read base matches the reference base. Insertions, deletions, and soft-clipped bases are not considered, so a read with indels but no mismatches has 100%% identity. This is the same calculation as for `--min-percent-identity` (see [below](#filter-reads)), and it requires reads in the %(bam-file)s to have an `MD` or an `NM` tag (or CIGAR strings that use the `=` and `X` operations instead of `M`). Most read aligners add these tags by default. If your BAM file lacks them, %(anvi-profile)s will warn you and profile your sample as usual, but without storing read identity histograms. You can add `MD` and `NM` tags to an existing BAM file with `samtools calmd`.
+
+Only the reads that are used for profiling are counted in these histograms, so reads removed by `--min-percent-identity` or `--fetch-filter` are not included. Just like for the number of reads per split stored in the %(single-profile-db)s, each read is counted in exactly one split.
+
+When you merge single profiles with %(anvi-merge)s, the merged %(profile-db)s will include read identity histograms only if all of the single profiles have them.
+
 ## Analysis Parameters
 
 Changing these will affect the way that your sequences are analyzed.
@@ -71,6 +83,8 @@ For instance, if you wish to work only with contigs that have more than a certai
 ### Filter reads
 
 You can also ignore reads in your BAM file with a percent identity to the reference less than some threshold using the flag `--min-percent-identity`.  By default, all reads are used.
+
+The percent identity of a read is calculated from its aligned positions only, ignoring insertions, deletions, and soft-clipped bases (see [read identity histograms](#read-identity-histograms) for details). For this, reads must have an `MD` or an `NM` tag (or CIGAR strings that use the `=` and `X` operations instead of `M`), otherwise %(anvi-profile)s will not accept this flag.
 
 For example, the following code will only look at contigs longer than 2000 nts and will ignore BAM file reads with less than 95 percent identity to the reference:
 
