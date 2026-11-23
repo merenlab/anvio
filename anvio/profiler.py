@@ -454,6 +454,8 @@ class BAMProfilerQuick:
         self.collection_bins = OrderedDict()
         self.contig_names_to_process = []
 
+        # set per BAM file in `report_stats` (see `get_identity_histogram_eligibility_of_bam_files`)
+        self.compute_identity_histograms_per_bam_file = {}
 
     def sanity_check(self):
         if not self.contigs_db_path:
@@ -734,6 +736,12 @@ class BAMProfilerQuick:
         reporting_bins = len(self.collection_bins) > 0
         reporting_genes = self.gene_level_stats and not reporting_bins
 
+        # read identity histograms are computed for each BAM file whose reads carry the information needed to
+        # determine their percent identity. we learn this before starting the progress bar, so warnings about
+        # BAM files without it can be displayed properly. histograms are not reported (yet), but they are
+        # available in the coverage objects of contigs (see `_get_contig_coverage`)
+        self.compute_identity_histograms_per_bam_file = self.get_identity_histogram_eligibility_of_bam_files()
+
         self.progress.new("Bleep bloop", progress_total_items=total_num_items)
         self.progress.update('...')
 
@@ -752,6 +760,7 @@ class BAMProfilerQuick:
 
                 bam = bamops.BAMFileObject(bam_file_path, 'rb')
                 bam_file_name = os.path.splitext(os.path.basename(bam_file_path))[0]
+                self.compute_identity_histograms = self.compute_identity_histograms_per_bam_file[bam_file_path]
 
                 if reporting_bins:
                     mem_usage, mem_diff = self._process_bins_for_bam(bam, bam_file_name, output, mem_tracker, mem_usage, mem_diff, i, num_contigs, total_num_bam_files, window_output=window_output)
@@ -766,6 +775,35 @@ class BAMProfilerQuick:
 
         if window_output:
             window_output.close()
+
+
+    def get_identity_histogram_eligibility_of_bam_files(self):
+        """Returns a dict of BAM file paths and whether read identity histograms can be computed for them
+
+        Uses the same criterion as `anvi-profile` (see BAMProfiler.init_profile_from_BAM), and warns about
+        BAM files that do not meet it.
+        """
+
+        # as in anvi-profile, as many as 1% of sampled reads may lack the information needed to determine
+        # their percent identity
+        requirement = lambda x: sum(x) / len(x) >= 0.99
+
+        eligibility = {}
+        for bam_file_path in self.bam_file_paths:
+            bam = bamops.BAMFileObject(bam_file_path, 'rb')
+            eligibility[bam_file_path] = bam.reads_have_identity_information(require=requirement)
+            bam.close()
+
+        bam_files_without_identity = [os.path.basename(p) for p, eligible in eligibility.items() if not eligible]
+        if bam_files_without_identity:
+            self.run.warning(f"Anvi'o can't determine the percent identity of many of the reads in "
+                             f"{pp(len(bam_files_without_identity))} of your {pp(len(self.bam_file_paths))} BAM files, "
+                             f"since they lack MD or NM tags (and their CIGAR strings don't use the '=' and 'X' "
+                             f"operations instead of 'M'). This does not affect any of the numbers reported by this "
+                             f"program, but anvi'o will not compute histograms of read percent identities for these "
+                             f"BAM files: {', '.join(bam_files_without_identity)}.", header="NO READ IDENTITY HISTOGRAMS")
+
+        return eligibility
 
 
     def _get_header(self, reporting_bins, reporting_genes):
