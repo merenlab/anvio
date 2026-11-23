@@ -722,6 +722,11 @@ class Coverage:
         self.num_reads = 0
         self.num_reads_per_split = None
 
+        # filled in by self.run only if compute_identity_histograms=True (see self.run for details)
+        self.identity_histograms = None
+        self.num_below_min_identity = None
+        self.num_reads_without_identity = 0
+
         self.read_iterator_dict = {
             'fetch': self._fetch_iterator,
             'fetch_and_trim': self._fetch_and_trim_iterator,
@@ -745,7 +750,7 @@ class Coverage:
 
 
     def run(self, bam, contig_or_split, start=None, end=None, read_iterator='fetch',
-            max_coverage=None, skip_coverage_stats=False, split_boundaries=None, **kwargs):
+            max_coverage=None, skip_coverage_stats=False, split_boundaries=None, compute_identity_histograms=False, **kwargs):
         """Loop through the bam pileup and calculate coverage over a defined region of a contig or split
 
         Parameters
@@ -782,9 +787,31 @@ class Coverage:
             of reads assigned to each region, in the same order. See `get_split_index_for_read` for how
             reads are assigned.
 
+        compute_identity_histograms : bool, False
+            If True, reads are also binned by their percent identity to the reference (see
+            `ReadIdentityBins` and `get_read_percent_identity`), using the identity of the entire
+            (untrimmed) read. Fills in the following attributes:
+
+            - self.identity_histograms: a 2D numpy array of read counts (uint32), with one row per split
+              in `split_boundaries` (in the same order, with reads assigned to splits the same way as for
+              self.num_reads_per_split), or a single row for the entire region if `split_boundaries` is
+              not provided, and one column per bin of READ_IDENTITY_BINS.
+            - self.num_below_min_identity: a numpy array with one value per row of
+              self.identity_histograms, the number of reads with an identity below the first bin.
+            - self.num_reads_without_identity: the number of reads whose identity could not be
+              determined (these are in neither of the above). This can only be non-zero with the 'fetch'
+              read iterator, since 'fetch_filter_and_trim' excludes such reads.
+
+            Only the 'fetch' and 'fetch_filter_and_trim' read iterators are supported, since
+            'fetch_and_trim' does not keep the identity of reads before trimming them.
+
         **kwargs : **kwargs
             kwargs are passed to the method chosen
         """
+
+        if compute_identity_histograms and read_iterator not in ['fetch', 'fetch_filter_and_trim']:
+            raise ConfigError(f"Coverage.run :: Read identity histograms can only be computed with the 'fetch' or "
+                              f"'fetch_filter_and_trim' read iterators, not '{read_iterator}'.")
 
         if isinstance(contig_or_split, anvio.contigops.Split):
             contig_name = contig_or_split.parent
@@ -813,6 +840,18 @@ class Coverage:
         else:
             num_reads_per_split = None
 
+        if compute_identity_histograms:
+            # initialize data structures to hold the percent id data
+            # plain lists are much faster than numpy arrays for incrementing one element at a time
+            num_histogram_rows = len(split_boundaries) if split_boundaries else 1
+            identity_histograms = [[0] * READ_IDENTITY_BINS.num_bins for _ in range(num_histogram_rows)]
+            num_below_min_identity = [0] * num_histogram_rows
+            num_reads_without_identity = 0
+
+            # reads from 'fetch' are pysam reads, and reads from 'fetch_filter_and_trim' are trimmed
+            # Read objects that carry the percent identity of the untrimmed read
+            percent_identity_is_precomputed = read_iterator == 'fetch_filter_and_trim'
+
         try:
             read_iterator = self.read_iterator_dict[read_iterator]
         except KeyError:
@@ -826,12 +865,42 @@ class Coverage:
                     c[start:end] += 1
 
             if split_boundaries:
-                num_reads_per_split[self.get_split_index_for_read(read, split_boundaries, split_starts)] += 1
+                split_index = self.get_split_index_for_read(read, split_boundaries, split_starts)
+                num_reads_per_split[split_index] += 1
+            else:
+                split_index = 0
+
+            if compute_identity_histograms:
+                if percent_identity_is_precomputed:
+                    percent_identity = read.percent_identity
+                else:
+                    percent_identity = get_read_percent_identity(read)
+
+                if percent_identity is None:
+                    num_reads_without_identity += 1
+                else:
+                    bin_index = READ_IDENTITY_BINS.get_bin_index(percent_identity)
+                    if bin_index < 0:
+                        num_below_min_identity[split_index] += 1
+                    else:
+                        identity_histograms[split_index][bin_index] += 1
 
             self.num_reads += 1
 
         self.c = c
         self.num_reads_per_split = num_reads_per_split
+
+        if compute_identity_histograms:
+            # convert the lists to arrays
+            self.identity_histograms = np.array(identity_histograms, dtype=np.uint32)
+            self.num_below_min_identity = np.array(num_below_min_identity, dtype=np.uint32)
+            self.num_reads_without_identity = num_reads_without_identity
+
+            num_reads_accounted_for = int(self.identity_histograms.sum()) + int(self.num_below_min_identity.sum()) + num_reads_without_identity
+            if num_reads_accounted_for != self.num_reads:
+                raise ConfigError(f"Coverage.run :: Something is wrong with the read identity histograms of '{contig_name}': "
+                                  f"they account for {num_reads_accounted_for} reads, but {self.num_reads} reads were "
+                                  f"processed. This is probably a bug, and the anvi'o developers would like to hear about it.")
 
         if max_coverage is not None:
             if np.max(self.c) > max_coverage:
