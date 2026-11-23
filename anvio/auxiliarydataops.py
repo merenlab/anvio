@@ -123,6 +123,9 @@ class AuxiliaryDataForSplitCoverages(object):
     def set_identity_histogram_meta(self, bins, num_reads_without_identity):
         """Marks identity histograms as stored, and records what is needed to interpret them
 
+        Every call replaces all of these values, so `num_reads_without_identity` must include all samples in
+        the database (e.g., when merging profiles, the combined counts of all single profiles).
+
         Parameters
         ==========
         bins : bamops.ReadIdentityBins

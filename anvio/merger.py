@@ -335,6 +335,71 @@ class MultipleRuns:
             filesnpaths.is_file_plain_text(self.description_file_path)
             self.description = open(os.path.abspath(self.description_file_path), 'r').read()
 
+        self.check_identity_histograms_in_auxiliary_dbs()
+
+
+    def check_identity_histograms_in_auxiliary_dbs(self):
+        """Decides whether read identity histograms of single profiles can be merged
+
+        Histograms are merged only if every single profile has them, and they were all built with the same
+        bins. If some profiles have them and others don't, they are not merged (with a warning), since a
+        merged profile with histograms for only some of its samples would be misleading. Sets
+        self.merge_identity_histograms, and if it is True, self.identity_histogram_bins and
+        self.num_reads_without_identity (the per-sample counts of all single profiles combined).
+        """
+
+        AUX = lambda x: os.path.join(os.path.dirname(x), 'AUXILIARY-DATA.db')
+
+        self.merge_identity_histograms = False
+        self.identity_histogram_bins = None
+        self.num_reads_without_identity = {}
+
+        aux_paths = {p: AUX(p) for p in self.profile_dbs_info_dict}
+        if not all(filesnpaths.is_file_exists(aux_path, dont_raise=True) for aux_path in aux_paths.values()):
+            # merge_split_coverage_data will warn about the missing auxiliary databases and skip them all
+            return
+
+        bins_per_profile = {}
+        for profile_db_path, aux_path in aux_paths.items():
+            # only the flag is read without a version check, so that auxiliary databases generated before
+            # identity histograms existed (which can be merged as usual) are simply considered to lack them
+            aux_db = db.DB(aux_path, None, ignore_version=True)
+            stored = aux_db.get_meta_value('identity_histograms_stored', return_none_if_not_in_table=True)
+            aux_db.disconnect()
+
+            if not stored:
+                continue
+
+            aux = auxiliarydataops.AuxiliaryDataForSplitCoverages(aux_path, None, ignore_hash=True)
+            bins_per_profile[profile_db_path] = aux.get_identity_histogram_bins()
+            self.num_reads_without_identity.update(aux.get_num_reads_without_identity())
+            aux.close()
+
+        if not bins_per_profile:
+            return
+
+        if len(bins_per_profile) < len(aux_paths):
+            samples_without = sorted(self.profile_dbs_info_dict[p]['sample_id'] for p in aux_paths if p not in bins_per_profile)
+            self.run.warning(f"Some of the single profiles you are merging include histograms of read percent identities "
+                             f"in their auxiliary databases, but these do not: {', '.join(samples_without)}. Since a merged "
+                             f"profile can only include these histograms if all of its samples have them, the merged "
+                             f"profile will not include any. If you need them, please re-profile the samples that lack "
+                             f"them with a BAM file that includes MD or NM tags.", header="NO READ IDENTITY HISTOGRAMS")
+            self.num_reads_without_identity = {}
+            return
+
+        bin_parameters = set((b.min_identity, b.bin_width, b.num_bins) for b in bins_per_profile.values())
+        if len(bin_parameters) > 1:
+            raise ConfigError(f"The histograms of read percent identities in the auxiliary databases of your single "
+                              f"profiles were not built with the same bins, so they can't be merged :/ Here are the "
+                              f"(minimum identity, bin width, number of bins) values anvi'o found across your profiles: "
+                              f"{', '.join(str(p) for p in sorted(bin_parameters))}. This can happen if the profiles were "
+                              f"generated with different versions of anvi'o, in which case re-profiling them with the same "
+                              f"version would solve the issue.")
+
+        self.merge_identity_histograms = True
+        self.identity_histogram_bins = list(bins_per_profile.values())[0]
+
 
     def set_sample_id(self):
         if self.sample_id:
@@ -416,6 +481,14 @@ class MultipleRuns:
         merged_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(output_file_path, self.contigs_db_hash, create_new=True)
 
         self._concatenate_single_profile_tables(merged_split_coverage_values.db, table_name='split_coverages', is_auxiliary=True)
+
+        # see check_identity_histograms_in_auxiliary_dbs for when this is True. the meta values are set once,
+        # with the per-sample counts of all single profiles, since setting them replaces any existing values
+        if self.merge_identity_histograms:
+            self._concatenate_single_profile_tables(merged_split_coverage_values.db, table_name=tables.split_identity_histograms_table_name, is_auxiliary=True)
+            merged_split_coverage_values.set_identity_histogram_meta(self.identity_histogram_bins, self.num_reads_without_identity)
+
+        self.run.info('Read identity histograms merged', self.merge_identity_histograms)
 
         self.progress.new('Creating index for `split_coverages` table')
         self.progress.update('...')
