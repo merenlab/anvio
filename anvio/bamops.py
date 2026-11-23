@@ -3,6 +3,7 @@
 
 
 import os
+import re
 import sys
 import pysam
 import bisect
@@ -36,6 +37,13 @@ __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
+
+
+# an MD tag is made of numbers (runs of matching bases), single letters (mismatched reference bases),
+# and '^' followed by letters (deleted reference bases). letters other than A, C, G, and T (e.g., N)
+# can be identical to the read base, in which case mismatches must be verified base by base
+MD_TOKENS = re.compile(r'(\d+)|(\^[A-Z]+)|([A-Z])')
+MD_HAS_NON_ACGT_LETTERS = re.compile(r'[^0-9ACGT^]')
 
 
 class PairedEndTemplateDist:
@@ -2159,6 +2167,153 @@ class CircularityPredictor:
             return 'FF'
         else:
             return 'RR'
+
+
+def get_read_identity_counts(read):
+    """Returns the number of matching and aligned positions between a read and the reference
+
+    Percent identity of the read is then `100 * num_matches / num_aligned`. This function works directly
+    on the pysam read without reconstructing the reference sequence or vectorizing the read, which makes
+    it fast enough to run on every read in a BAM file.
+
+    Parameters
+    ==========
+    read : pysam.AlignedSegment
+        A mapped read. The read is not modified.
+
+    Returns
+    =======
+    (num_matches, num_aligned) : (int, int)
+        `num_aligned` is the number of aligned positions, i.e. those consumed by both the read and the
+        reference (CIGAR operations M, =, and X), and `num_matches` is the number of those positions
+        where the read base and the reference base are identical. Returns (None, None) if the identity
+        cannot be determined: the read has no aligned positions, there is no MD or NM tag (and no =/X
+        CIGAR operations), or the tags are inconsistent with the CIGAR string.
+
+    Notes
+    =====
+    - The identity is gap-excluded: insertions, deletions, clipped bases, and reference skips (N) are
+      ignored, so a read whose aligned positions all match has 100% identity even if it contains indels.
+    - The number of mismatches is learned from the first available source among: (1) the =/X CIGAR
+      operations, if the CIGAR string uses them instead of M; (2) the MD tag; (3) the NM tag minus the
+      inserted and deleted bases.
+    - When computing from the MD tag, a mismatch is counted only if the reference base differs from the read base. So an ambiguous
+      reference base that is listed in the MD tag but is identical to the read base (e.g., N vs N) is a
+      match. This check is skipped (for speed) when the MD tag contains only A, C, G, and T bases.
+    - When computing from the NM tag, the reference bases are unknown, so the same N vs N case would be counted
+      as a mismatch if the aligner counted it in NM.
+    """
+
+    base_counts = read.get_cigar_stats()[0]
+
+    num_eq = base_counts[constants.CIGAR_EQ]
+    num_x = base_counts[constants.CIGAR_X]
+    num_aligned = base_counts[constants.CIGAR_M] + num_eq + num_x
+
+    if not num_aligned:
+        return None, None
+
+    if not base_counts[constants.CIGAR_M] and (num_eq or num_x):
+        num_mismatches = num_x
+    elif read.has_tag('MD'):
+        md = read.get_tag('MD')
+
+        if MD_HAS_NON_ACGT_LETTERS.search(md):
+            if read.query_sequence is None:
+                return None, None
+
+            num_mismatches = count_mismatches_in_MD_comparing_bases(md, read.cigartuples, read.query_sequence)
+        else:
+            num_mismatches = count_mismatches_in_MD(md)
+    elif read.has_tag('NM'):
+        num_mismatches = read.get_tag('NM') - base_counts[constants.CIGAR_I] - base_counts[constants.CIGAR_D]
+    else:
+        return None, None
+
+    if num_mismatches < 0 or num_mismatches > num_aligned:
+        return None, None
+
+    return num_aligned - num_mismatches, num_aligned
+
+
+def get_read_percent_identity(read):
+    """Returns the gap-excluded percent identity of a pysam read (e.g., 95.2), or None
+
+    See `get_read_identity_counts` for how the identity is calculated, and when it can't be.
+    """
+
+    num_matches, num_aligned = get_read_identity_counts(read)
+
+    if num_aligned is None:
+        return None
+
+    return 100 * num_matches / num_aligned
+
+
+def count_mismatches_in_MD(md):
+    """Returns the number of mismatched bases listed in an MD tag
+
+    Numbers indicate runs of matching bases) and are not counted,
+    letters following a '^' are deleted reference bases and are not counted,
+    so we only count non-digit characters that do not follow '^'.
+    """
+
+    num_mismatches = 0
+    in_deletion = False
+
+    for char in md:
+        if char == '^':
+            in_deletion = True
+        elif char.isdigit():
+            in_deletion = False
+        elif not in_deletion:
+            num_mismatches += 1
+
+    return num_mismatches
+
+
+def count_mismatches_in_MD_comparing_bases(md, cigartuples, query_sequence):
+    """Returns the number of MD mismatches where the reference base differs from the read base
+
+    This is the slow version of `count_mismatches_in_MD`, needed only when the MD tag includes ambiguous
+    reference bases (e.g., N or IUPAC codes) that may be identical to the read base. To find the read
+    base for each MD mismatch, the n-th aligned position is located in the read via the CIGAR string.
+    """
+
+    # first we identify position indices where the read (query) aligns to the ref so that we can look them up later
+    # stored as (first aligned position, last aligned position + 1, position in the read) for each aligned block
+    aligned_blocks = []
+    aligned_pos = 0
+    read_pos = 0
+    for operation, length in cigartuples:
+        if operation in constants.CIGAR_OPS_ALIGNED:
+            aligned_blocks.append((aligned_pos, aligned_pos + length, read_pos))
+            aligned_pos += length
+
+        if operation in constants.CIGAR_OPS_CONSUMING_READ:
+            read_pos += length
+
+    # then for each mismatch element of the MD tag, we compare the ref base to the read
+    # at its alignment position (using the indices from before) to see if its a mismatch
+    num_mismatches = 0
+    aligned_pos = 0
+    block_index = 0
+    for num_matching, deleted_bases, reference_base in MD_TOKENS.findall(md):
+        if num_matching:
+            aligned_pos += int(num_matching)
+        elif deleted_bases:
+            continue
+        else:
+            while aligned_blocks[block_index][1] <= aligned_pos:
+                block_index += 1
+
+            block_start, _, block_read_pos = aligned_blocks[block_index]
+            if query_sequence[block_read_pos + aligned_pos - block_start] != reference_base:
+                num_mismatches += 1
+
+            aligned_pos += 1
+
+    return num_mismatches
 
 
 # The functions below are helpers of the Read class which exist outside the class because they are

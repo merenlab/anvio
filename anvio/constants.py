@@ -201,6 +201,12 @@ cigar_consumption = numpy.array([
     (1, 1),
 ])
 
+# Codes of the cigarstring operations above that are needed by name, e.g. as indices into the
+# per-operation base counts returned by pysam's `get_cigar_stats`
+CIGAR_M, CIGAR_I, CIGAR_D, CIGAR_S, CIGAR_EQ, CIGAR_X = 0, 1, 2, 4, 7, 8
+CIGAR_OPS_ALIGNED = {CIGAR_M, CIGAR_EQ, CIGAR_X}
+CIGAR_OPS_CONSUMING_READ = {CIGAR_M, CIGAR_I, CIGAR_S, CIGAR_EQ, CIGAR_X}
+
 # this is to have a common language across multiple modules when genomes (whether they are MAGs,
 # SAGs, or isolate genomes):
 essential_genome_info = ['gc_content', 'num_contigs', 'num_splits', 'total_length', 'num_genes', 'percent_completion', 'percent_redundancy',
