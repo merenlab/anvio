@@ -950,6 +950,8 @@ class BAMProfilerQuick:
 
         try:
             coverage_obj.run(bam, contig_name, read_iterator='fetch', skip_coverage_stats=True, compute_identity_histograms=self.compute_identity_histograms)
+        except KeyError:
+            # the contig is not among the references of this BAM file
             return None
 
         return coverage_obj
