@@ -71,8 +71,10 @@ def get_args():
     #############################################################################################################################
     groupJ.add_argument(*anvio.A('min-percent-identity'), **anvio.K('min-percent-identity', {'help':
                             'Ignore any reads with a percent identity to the reference less '
-                            'than this number, e.g. 95. If not provided, all reads in the BAM '
-                            'file will be used (and things will run faster).', 'default': None}))
+                            'than this number, e.g. 95. Percent identity is calculated from the '
+                            'aligned positions of a read (insertions, deletions, and clipped bases '
+                            'are ignored), and requires reads to have MD or NM tags. If not provided, '
+                            'all reads in the BAM file will be used (and things will run faster).', 'default': None}))
     groupJ.add_argument(*anvio.A('fetch-filter'), **anvio.K('fetch-filter'))
 
     #############################################################################################################################
