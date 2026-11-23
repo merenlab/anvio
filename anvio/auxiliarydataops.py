@@ -1,5 +1,6 @@
 """Module to deal with HDF5 files"""
 
+import json
 import time
 import numpy as np
 
@@ -117,6 +118,27 @@ class AuxiliaryDataForSplitCoverages(object):
 
         self.db.insert_many(t.split_identity_histograms_table_name, entries=self.identity_histogram_entries)
         self.identity_histogram_entries = []
+
+
+    def set_identity_histogram_meta(self, bins, num_reads_without_identity):
+        """Marks identity histograms as stored, and records what is needed to interpret them
+
+        Parameters
+        ==========
+        bins : bamops.ReadIdentityBins
+            The bins the histograms were built with.
+        num_reads_without_identity : dict
+            The number of reads per sample whose percent identity could not be determined, which are
+            not in any histogram (e.g., {'SAMPLE_01': 12}).
+        """
+
+        self.db.set_meta_value('identity_histogram_min', bins.min_identity)
+        self.db.set_meta_value('identity_histogram_bin_width', bins.bin_width)
+        self.db.set_meta_value('identity_histogram_num_bins', bins.num_bins)
+        self.db.set_meta_value('identity_definition', 'gap_excluded')
+        self.db.set_meta_value('num_reads_without_identity', json.dumps(num_reads_without_identity))
+        self.db.set_meta_value('identity_histograms_stored', True)
+
 
 
     def get_all_known_split_names(self):
