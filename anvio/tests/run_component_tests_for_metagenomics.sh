@@ -76,6 +76,29 @@ do
     echo
 done
 
+# the raw BAM files lack MD and NM tags, which anvi'o needs to determine the percent identity of reads
+# (for read identity histograms and `--min-percent-identity`), so we add them here. an untagged copy of
+# SAMPLE-01 is kept aside to test profiling without them. the reference is copied, since samtools calmd
+# writes an index file next to it
+INFO "Adding MD and NM tags to the BAM files"
+IDENTITY_DIR=$output_dir/READ-IDENTITY-TESTS
+mkdir -p $IDENTITY_DIR
+cp $files/contigs.fa $IDENTITY_DIR/reference.fa
+cp $output_dir/SAMPLE-01.bam $IDENTITY_DIR/SAMPLE-01-NO-TAGS.bam
+cp $output_dir/SAMPLE-01.bam.bai $IDENTITY_DIR/SAMPLE-01-NO-TAGS.bam.bai
+python - "$output_dir" "$IDENTITY_DIR/reference.fa" << 'ADD_MD_TAGS'
+import os, sys, pysam
+
+output_dir, reference_path = sys.argv[1], sys.argv[2]
+
+for sample in ["SAMPLE-01", "SAMPLE-02", "SAMPLE-03"]:
+    bam_path = os.path.join(output_dir, sample + ".bam")
+    tagged_bam_path = bam_path + ".tagged"
+    pysam.calmd("-b", bam_path, reference_path, save_stdout=tagged_bam_path)
+    os.replace(tagged_bam_path, bam_path)
+    pysam.index(bam_path)
+ADD_MD_TAGS
+
 
 INFO "Rapid profiling of BAM files with anvi-profile blitz in gene mode"
 anvi-profile-blitz $output_dir/*bam \
@@ -360,6 +383,49 @@ do
                            --no-progress
 done
 
+INFO "Checking read identity histograms of the single profiles"
+for f in 01 02 03
+do
+    anvi-db-info $output_dir/SAMPLE-$f/AUXILIARY-DATA.db > $output_dir/SAMPLE-$f/AUXILIARY-DATA-INFO.txt 2>&1
+    cat $output_dir/SAMPLE-$f/AUXILIARY-DATA-INFO.txt
+    ASSERT_FILE_CONTAINS $output_dir/SAMPLE-$f/AUXILIARY-DATA-INFO.txt "identity_histograms_stored .*: 1"
+done
+
+# the extra profiles below are stored in $IDENTITY_DIR, so they are not included in the merging steps
+# that use all profiles in $output_dir
+INFO "Profiling SAMPLE-01 with --min-percent-identity (which requires MD or NM tags)"
+anvi-profile -i $output_dir/SAMPLE-01.bam \
+             -o $IDENTITY_DIR/SAMPLE-01-MIN-PCT-ID \
+             -c $output_dir/CONTIGS.db \
+             --min-percent-identity 99 \
+             --no-progress \
+             $thread_controller
+anvi-db-info $IDENTITY_DIR/SAMPLE-01-MIN-PCT-ID/AUXILIARY-DATA.db > $IDENTITY_DIR/SAMPLE-01-MIN-PCT-ID/AUXILIARY-DATA-INFO.txt 2>&1
+cat $IDENTITY_DIR/SAMPLE-01-MIN-PCT-ID/AUXILIARY-DATA-INFO.txt
+ASSERT_FILE_CONTAINS $IDENTITY_DIR/SAMPLE-01-MIN-PCT-ID/AUXILIARY-DATA-INFO.txt "identity_histograms_stored .*: 1"
+
+INFO "Profiling a BAM file without MD and NM tags (no read identity histograms)"
+anvi-profile -i $IDENTITY_DIR/SAMPLE-01-NO-TAGS.bam \
+             -o $IDENTITY_DIR/SAMPLE-01-NO-TAGS \
+             -S SAMPLE_01_NO_TAGS \
+             -c $output_dir/CONTIGS.db \
+             --profile-SCVs \
+             --no-progress \
+             $thread_controller
+anvi-db-info $IDENTITY_DIR/SAMPLE-01-NO-TAGS/AUXILIARY-DATA.db > $IDENTITY_DIR/SAMPLE-01-NO-TAGS/AUXILIARY-DATA-INFO.txt 2>&1
+cat $IDENTITY_DIR/SAMPLE-01-NO-TAGS/AUXILIARY-DATA-INFO.txt
+ASSERT_FILE_CONTAINS $IDENTITY_DIR/SAMPLE-01-NO-TAGS/AUXILIARY-DATA-INFO.txt "identity_histograms_stored .*: 0"
+
+INFO "Merging profiles with and without read identity histograms (the merged profile has none)"
+anvi-merge $IDENTITY_DIR/SAMPLE-01-NO-TAGS/PROFILE.db $output_dir/SAMPLE-02/PROFILE.db \
+           -o $IDENTITY_DIR/MIXED-MERGED \
+           -c $output_dir/CONTIGS.db \
+           --skip-hierarchical-clustering \
+           --no-progress
+anvi-db-info $IDENTITY_DIR/MIXED-MERGED/AUXILIARY-DATA.db > $IDENTITY_DIR/MIXED-MERGED/AUXILIARY-DATA-INFO.txt 2>&1
+cat $IDENTITY_DIR/MIXED-MERGED/AUXILIARY-DATA-INFO.txt
+ASSERT_FILE_CONTAINS $IDENTITY_DIR/MIXED-MERGED/AUXILIARY-DATA-INFO.txt "identity_histograms_stored .*: 0"
+
 INFO "Fast summary of the single profile databases"
 anvi-summarize-blitz $output_dir/SAMPLE-0*/PROFILE.db \
                      -c $output_dir/CONTIGS.db \
@@ -380,6 +446,9 @@ anvi-profile -i $output_dir/SAMPLE-01.bam \
              --force-multi \
              --no-progress \
              $thread_controller
+anvi-db-info $output_dir/MULTI-THREAD-SAMPLE-01/AUXILIARY-DATA.db > $output_dir/MULTI-THREAD-SAMPLE-01/AUXILIARY-DATA-INFO.txt 2>&1
+cat $output_dir/MULTI-THREAD-SAMPLE-01/AUXILIARY-DATA-INFO.txt
+ASSERT_FILE_CONTAINS $output_dir/MULTI-THREAD-SAMPLE-01/AUXILIARY-DATA-INFO.txt "identity_histograms_stored .*: 1"
 rm -rf $output_dir/MULTI-THREAD-SAMPLE-01
 
 # Test the profiler's handling of contigs that have zero coverage in the BAM file.
@@ -433,6 +502,9 @@ anvi-merge $PREFILTER_DIR/SAMPLE-*/PROFILE.db \
            -o $PREFILTER_DIR/MERGED \
            -c $PREFILTER_DIR/CONTIGS.db \
            --no-progress
+anvi-db-info $PREFILTER_DIR/MERGED/AUXILIARY-DATA.db > $PREFILTER_DIR/MERGED/AUXILIARY-DATA-INFO.txt 2>&1
+cat $PREFILTER_DIR/MERGED/AUXILIARY-DATA-INFO.txt
+ASSERT_FILE_CONTAINS $PREFILTER_DIR/MERGED/AUXILIARY-DATA-INFO.txt "identity_histograms_stored .*: 1"
 
 # Repeat with multi-threading to exercise the shared memory + WorkerContext path
 INFO "Testing zero-coverage contig handling with multi-threading"
@@ -448,12 +520,18 @@ anvi-merge $PREFILTER_DIR/SAMPLE-*-MT/PROFILE.db \
            -o $PREFILTER_DIR/MERGED-MT \
            -c $PREFILTER_DIR/CONTIGS.db \
            --no-progress
+anvi-db-info $PREFILTER_DIR/MERGED-MT/AUXILIARY-DATA.db > $PREFILTER_DIR/MERGED-MT/AUXILIARY-DATA-INFO.txt 2>&1
+cat $PREFILTER_DIR/MERGED-MT/AUXILIARY-DATA-INFO.txt
+ASSERT_FILE_CONTAINS $PREFILTER_DIR/MERGED-MT/AUXILIARY-DATA-INFO.txt "identity_histograms_stored .*: 1"
 
 INFO "Merging profiles"
 anvi-merge $output_dir/*/PROFILE.db -o $output_dir/SAMPLES-MERGED \
                                     -c $output_dir/CONTIGS.db \
                                     --description $files/example_description.md \
                                     --no-progress
+anvi-db-info $output_dir/SAMPLES-MERGED/AUXILIARY-DATA.db > $output_dir/SAMPLES-MERGED/AUXILIARY-DATA-INFO.txt 2>&1
+cat $output_dir/SAMPLES-MERGED/AUXILIARY-DATA-INFO.txt
+ASSERT_FILE_CONTAINS $output_dir/SAMPLES-MERGED/AUXILIARY-DATA-INFO.txt "identity_histograms_stored .*: 1"
 
 INFO "Merging profiles without any clustering"
 anvi-merge $output_dir/*/PROFILE.db -o $output_dir/SAMPLES-MERGED-WO-CLUSTERING \
@@ -1027,6 +1105,12 @@ anvi-split -p $output_dir/SAMPLES-MERGED/PROFILE.db \
            -C CONCOCT \
            -o $output_dir/CONCOCT_BINS_SPLIT \
            --no-progress
+for bin_dir in $output_dir/CONCOCT_BINS_SPLIT/*/
+do
+    anvi-db-info $bin_dir/AUXILIARY-DATA.db > $bin_dir/AUXILIARY-DATA-INFO.txt 2>&1
+    cat $bin_dir/AUXILIARY-DATA-INFO.txt
+    ASSERT_FILE_CONTAINS $bin_dir/AUXILIARY-DATA-INFO.txt "identity_histograms_stored .*: 1"
+done
 
 INFO "Splitting only Bin_1 from the merged profile"
 anvi-split -p $output_dir/SAMPLES-MERGED/PROFILE.db \
