@@ -304,7 +304,8 @@ class BAMFileObject(pysam.AlignmentFile):
         percent_id_cutoff : float, 0
             Reads with a percentage ID relative to their mapped segments of the reference genome
             less than this amount will be excluded. E.g. if you want 95% as a cutoff, use
-            percent_id_cutoff=95.0
+            percent_id_cutoff=95.0. Reads for which the percent ID cannot be determined (see
+            `get_read_identity_counts`) are excluded as well.
         """
 
         for read in self.fetch_only(contig_name, start, end, *args, **kwargs):
@@ -318,13 +319,13 @@ class BAMFileObject(pysam.AlignmentFile):
                 # not to work with such a read (see https://github.com/merenlab/anvio/issues/1821)
                 continue
 
-            read = Read(read)
-
-            # The read must be vectorized before calling read.get_percent_id
-            read.vectorize()
-
-            if read.get_percent_id() < percent_id_cutoff:
+            # filtering takes place on the pysam read, so reads that fail the cutoff are never
+            # converted into Read objects
+            percent_id = get_read_percent_identity(read)
+            if percent_id is None or percent_id < percent_id_cutoff:
                 continue
+
+            read = Read(read)
 
             # Trimming takes place _after_ filtering based on percent ID
 
@@ -473,24 +474,6 @@ class Read:
         """Used to access the vectorized form of the read, self.v"""
 
         return self.v.__getitem__(key)
-
-
-    def get_percent_id(self):
-        """Get the percent id of the read to the reference
-
-        Returns
-        =======
-        output : float
-            The percent ID. E.g. 95.2
-
-        Notes
-        =====
-        - Only mapped segments (i.e. consumed by read and ref) are considered. E.g if 50% of a read
-          maps with 100% identity and the other 50% is composed of indels, this function returns 100.0
-        - Delegates to the just-in-time compiled function _get_percent_id
-        """
-
-        return _get_percent_id(self.v)
 
 
     def get_aligned_sequence_and_reference_positions(self):
@@ -2394,21 +2377,6 @@ def _vectorize_read(cigartuples, query_sequence, reference_sequence, reference_s
         count += length
 
     return v
-
-
-@jit(nopython=True)
-def _get_percent_id(vectorized_read):
-    # Filter vectorization to only include mapped segments, i.e. mapping_type == 0
-    vectorized_read = vectorized_read[vectorized_read[:, 2] == 0]
-
-    mapped_length = vectorized_read.shape[0]
-
-    num_equal = 0
-    for i in range(mapped_length):
-        if vectorized_read[i, 1] == vectorized_read[i, 3]:
-            num_equal += 1
-
-    return 100 * num_equal / mapped_length
 
 
 @jit(nopython=True)
