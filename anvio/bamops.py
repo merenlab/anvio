@@ -327,6 +327,10 @@ class BAMFileObject(pysam.AlignmentFile):
 
             read = Read(read)
 
+            # identity is a property of the entire read, so it is stored before trimming (e.g., for
+            # read identity histograms in Coverage.run)
+            read.percent_identity = percent_id
+
             # Trimming takes place _after_ filtering based on percent ID
 
             if start - read.reference_start > 0:
@@ -425,6 +429,10 @@ class Read:
 
         # See self.vectorize
         self.v = None
+
+        # percent identity of the untrimmed read, if the read iterator that created this object
+        # computed it (see BAMFileObject.fetch_filter_and_trim)
+        self.percent_identity = None
 
 
     def vectorize(self):
