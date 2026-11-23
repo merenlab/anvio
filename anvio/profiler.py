@@ -456,6 +456,8 @@ class BAMProfilerQuick:
 
         # set per BAM file in `report_stats` (see `get_identity_histogram_eligibility_of_bam_files`)
         self.compute_identity_histograms_per_bam_file = {}
+        self.compute_identity_histograms = False
+
 
     def sanity_check(self):
         if not self.contigs_db_path:
@@ -947,8 +949,7 @@ class BAMProfilerQuick:
         coverage_obj = bamops.Coverage()
 
         try:
-            coverage_obj.run(bam, contig_name, read_iterator='fetch', skip_coverage_stats=True)
-        except:
+            coverage_obj.run(bam, contig_name, read_iterator='fetch', skip_coverage_stats=True, compute_identity_histograms=self.compute_identity_histograms)
             return None
 
         return coverage_obj
