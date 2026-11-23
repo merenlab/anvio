@@ -52,8 +52,8 @@ pan_graph_edges_table_structure      = ['edge_id', 'source', 'target', 'weight' 
 pan_graph_edges_table_types          = [  'str'  ,   'str' ,   'str' , 'numeric',     'str'      ]
 
 pan_graph_regions_table_name         = 'pan_graph_regions'
-pan_graph_regions_table_structure    = ['component_id', 'region_id', 'region_type', 'x_min'  , 'x_max'  , 'num_synteny_gene_clusters', 'num_gene_clusters', 'num_gene_calls', 'num_genomes', 'max_expansion', 'min_expansion', 'expansion_log', 'num_covering_syngcs', 'complexity', 'diversity', 'num_genomes_present', 'weight' , 'composite_variability_score']
-pan_graph_regions_table_types        = [    'str'     ,    'str'   ,     'str'    , 'numeric', 'numeric',          'numeric'         ,      'numeric'     ,    'numeric'    ,   'numeric'  ,    'numeric'   ,    'numeric'   ,    'numeric'   ,       'numeric'      ,  'numeric'  ,  'numeric' ,       'numeric'      , 'numeric',           'numeric']
+pan_graph_regions_table_structure    = ['component_id', 'region_id', 'region_type', 'x_min'  , 'x_max'  , 'num_synteny_gene_clusters', 'num_gene_clusters', 'num_gene_calls', 'num_genomes', 'max_expansion', 'min_expansion', 'expansion_log', 'num_covering_syngcs', 'complexity', 'diversity', 'num_genomes_present', 'weight' , 'composite_variability_score_geometric', 'composite_variability_score_arithmetic']
+pan_graph_regions_table_types        = [    'str'     ,    'str'   ,     'str'    , 'numeric', 'numeric',          'numeric'         ,      'numeric'     ,    'numeric'    ,   'numeric'  ,    'numeric'   ,    'numeric'   ,    'numeric'   ,       'numeric'      ,  'numeric'  ,  'numeric' ,       'numeric'      , 'numeric',               'numeric'                ,                'numeric']
 
 pan_graph_genome_distances_table_name      = 'pan_graph_genome_distances'
 pan_graph_genome_distances_table_structure = ['genome_a', 'genome_b', 'distance']

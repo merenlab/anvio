@@ -38,8 +38,10 @@ progress = terminal.Progress()
 #   * expansion_log is new: log(1 + max_expansion) / log(1 + 100), capped at 1.
 #   * num_genomes is new: the number of genomes the region was scored against,
 #     which the former weight / weight_normalized gives back.
-#   * composite_variability_score is the geometric mean of complexity, diversity,
-#     expansion_log and weight; the four *_mm_scaled columns are dropped.
+#   * composite_variability_score is replaced by composite_variability_score_geometric
+#     and composite_variability_score_arithmetic, the geometric and the arithmetic
+#     mean of complexity, diversity, expansion_log and weight; the four *_mm_scaled
+#     columns are dropped.
 # The old diversity cannot be converted, and v7 databases made by earlier code
 # hold earlier definitions of the other metrics (backbone expansions stored as 0,
 # complexity counted one lower), so every metric of every region is recomputed
@@ -48,8 +50,8 @@ progress = terminal.Progress()
 pan_graph_nodes_table_name = 'pan_graph_nodes'
 
 pan_graph_regions_table_name      = 'pan_graph_regions'
-pan_graph_regions_table_structure = ['component_id', 'region_id', 'region_type', 'x_min', 'x_max', 'num_synteny_gene_clusters', 'num_gene_clusters', 'num_gene_calls', 'num_genomes', 'max_expansion', 'min_expansion', 'expansion_log', 'num_covering_syngcs', 'complexity', 'diversity', 'num_genomes_present', 'weight', 'composite_variability_score']
-pan_graph_regions_table_types     = [    'str'     ,    'str'   ,     'str'    , 'numeric', 'numeric', 'numeric', 'numeric', 'numeric', 'numeric', 'numeric', 'numeric', 'numeric', 'numeric', 'numeric', 'numeric', 'numeric', 'numeric', 'numeric']
+pan_graph_regions_table_structure = ['component_id', 'region_id', 'region_type', 'x_min', 'x_max', 'num_synteny_gene_clusters', 'num_gene_clusters', 'num_gene_calls', 'num_genomes', 'max_expansion', 'min_expansion', 'expansion_log', 'num_covering_syngcs', 'complexity', 'diversity', 'num_genomes_present', 'weight', 'composite_variability_score_geometric', 'composite_variability_score_arithmetic']
+pan_graph_regions_table_types     = [    'str'     ,    'str'   ,     'str'    , 'numeric', 'numeric', 'numeric', 'numeric', 'numeric', 'numeric', 'numeric', 'numeric', 'numeric', 'numeric', 'numeric', 'numeric', 'numeric', 'numeric', 'numeric', 'numeric']
 
 LOG_SIZE_CAP = 100
 
@@ -75,7 +77,8 @@ def _nodes_per_region(pan_graph_db):
 def _summarize_region(nodes, num_genomes):
     """The v8 metrics of one region from its ``nodes``, scored against
     ``num_genomes`` genomes with the defaults of the time: the graded haplotype
-    diversity with the empty allele, LOG_SIZE_CAP, and the geometric mean."""
+    diversity with the empty allele, LOG_SIZE_CAP, and both the geometric and the
+    arithmetic mean for the composite variability score."""
     node_ids, region_x, genomes_sets = zip(*nodes)
 
     # the allele of every genome: the set of the region's SynGCs it carries
@@ -135,7 +138,8 @@ def _summarize_region(nodes, num_genomes):
             'diversity': diversity,
             'num_genomes_present': num_genomes_present,
             'weight': weight,
-            'composite_variability_score': (complexity * diversity * expansion_log * weight) ** (1 / 4)}
+            'composite_variability_score_geometric': (complexity * diversity * expansion_log * weight) ** (1 / 4),
+            'composite_variability_score_arithmetic': (complexity + diversity + expansion_log + weight) / 4}
 
 
 def _migrate_regions(pan_graph_db):
@@ -206,7 +210,9 @@ def migrate(db_path):
         f"{num_regions} region(s) from their nodes, and each now comes from its region alone, without "
         f"scaling over the dataset: complexity and weight are the scaled values (their raw counts are "
         f"num_covering_syngcs and num_genomes_present), diversity is the graded haplotype diversity, "
-        f"expansion_log is new, and the composite variability score is the geometric mean of the four. "
+        f"expansion_log is new, and the composite variability score is stored twice, as the geometric "
+        f"(composite_variability_score_geometric) and the arithmetic (composite_variability_score_arithmetic) "
+        f"mean of the four. "
         f"The regions themselves and the rest of the graph did not change.",
         nl_before=1, nl_after=1, mc='green')
 

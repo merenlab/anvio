@@ -506,7 +506,7 @@ class PangenomeGraphManager():
         return nodes_df, regions_info_dict
 
 
-    def _summarize_one_region(self, region_id, values_list, num_genomes, is_backbone, log_size_cap = 100, haplotype_type = 'dissimilarity', count_empty_allel = True, cvs_mean = 'geometric'):
+    def _summarize_one_region(self, region_id, values_list, num_genomes, is_backbone, log_size_cap = 100, haplotype_type = 'dissimilarity', count_empty_allel = True):
         """Compute one row of the region summary table (BR / VR + the
         complexity / diversity / expansion / weight metrics and the composite
         variability score). Every metric comes from this region alone, so a row
@@ -523,13 +523,11 @@ class PangenomeGraphManager():
         ``haplotype_type``     the diversity metric, 'dissimilarity' or 'diversity'.
         ``count_empty_allel``  whether the genomes without the region count as an
                                allele (the empty one) in the diversity.
-        ``cvs_mean``           'geometric' or 'arithmetic': the mean of the four
-                               0-to-1 metrics that makes the composite variability score."""
+
+        The composite variability score is reported twice, as the geometric and
+        as the arithmetic mean of the four 0-to-1 metrics."""
         if haplotype_type not in ('dissimilarity', 'diversity'):
             raise ConfigError(f"Unknown haplotype type {haplotype_type!r}; expected 'dissimilarity' or 'diversity' :/")
-        if cvs_mean not in ('geometric', 'arithmetic'):
-            raise ConfigError(f"Unknown mean {cvs_mean!r} for the composite variability score; expected "
-                              f"'geometric' or 'arithmetic' :/")
 
         region_x, _, nodes, genomes_sets = zip(*values_list)
 
@@ -598,10 +596,11 @@ class PangenomeGraphManager():
                 similarity += (allele_counts[a] * allele_counts[b] * n / (size[a] + size[b] - n)).sum()
             diversity = float(1 - similarity / (N * (N - 1) / 2))
 
-        # Composite variability score: the mean ``cvs_mean`` of the four 0-to-1 metrics.
+        # Composite variability score: the geometric and the arithmetic mean of the
+        # four 0-to-1 metrics.
         metrics = np.array([complexity, diversity, expansion_log, weight])
-        composite_variability_score = float(metrics.prod() ** (1 / len(metrics)) if cvs_mean == 'geometric'
-                                            else metrics.mean())
+        composite_variability_score_geometric = float(metrics.prod() ** (1 / len(metrics)))
+        composite_variability_score_arithmetic = float(metrics.mean())
 
         return {
             'region_id': region_id,
@@ -620,7 +619,8 @@ class PangenomeGraphManager():
             'diversity': diversity,
             'num_genomes_present': num_genomes_present,
             'weight': weight,
-            'composite_variability_score': composite_variability_score,
+            'composite_variability_score_geometric': composite_variability_score_geometric,
+            'composite_variability_score_arithmetic': composite_variability_score_arithmetic,
         }
 
 
