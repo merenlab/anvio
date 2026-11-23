@@ -1119,6 +1119,13 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.total_reads_kept = 0
         self.description_file_path = A('description')
 
+        # read identity histograms are computed whenever the reads in the BAM file carry the information
+        # needed to determine their percent identity (see `init_profile_from_BAM`), and stored in the
+        # auxiliary database. the two numbers below are the reads that are not in any histogram
+        self.compute_identity_histograms = False
+        self.num_reads_below_min_identity = 0
+        self.num_reads_without_identity = 0
+
         # this will be set to `True` by `_apply_bam_index_prefilter` if there is not a single read
         # in the BAM file that is mapped to any of the contigs we are interested in. in that case
         # anvi'o will not profile anything, but will still generate a proper single profile database
@@ -1635,7 +1642,33 @@ class BAMProfiler(dbops.ContigsSuperclass):
             for split in contig.splits:
                 self.auxiliary_db.append(split.name, self.sample_id, split.coverage.c)
 
+                if self.compute_identity_histograms:
+                    # each split has a single row of identity histograms (see Contig.analyze_coverage)
+                    self.auxiliary_db.append_identity_histogram(split.name,
+                                                                self.sample_id,
+                                                                split.coverage.num_below_min_identity[0],
+                                                                split.coverage.identity_histograms[0])
+
         self.auxiliary_db.store()
+
+
+    def store_identity_histogram_meta(self):
+        """Records how to interpret the read identity histograms in the auxiliary database, if there are any"""
+
+        if not self.compute_identity_histograms:
+            return
+
+        self.auxiliary_db.set_identity_histogram_meta(bamops.READ_IDENTITY_BINS, {self.sample_id: self.num_reads_without_identity})
+
+
+    def report_identity_histograms(self):
+        if not self.compute_identity_histograms:
+            self.run.info("Read identity histograms stored", False, mc='red')
+            return
+
+        self.run.info("Read identity histograms stored", True)
+        self.run.info(f"Num reads below {bamops.READ_IDENTITY_BINS.min_identity}% identity", self.num_reads_below_min_identity)
+        self.run.info("Num reads without identity information", self.num_reads_without_identity)
 
 
     def store_zero_coverage_for_skipped_splits(self):
@@ -1719,6 +1752,13 @@ class BAMProfiler(dbops.ContigsSuperclass):
             # detect it's all zeros and store the integer length — we shortcut that.
             for split_name, length in rows:
                 self.auxiliary_db.coverage_entries.append((split_name, self.sample_id, length))
+
+            # same shortcut for read identity histograms: an all-zero histogram is stored as the
+            # number of bins (see AuxiliaryDataForSplitCoverages.append_identity_histogram)
+            if self.compute_identity_histograms:
+                for split_name, _ in rows:
+                    self.auxiliary_db.identity_histogram_entries.append((split_name, self.sample_id, 0, bamops.READ_IDENTITY_BINS.num_bins))
+
             self.auxiliary_db.store()
 
             # Write to zero_coverage_splits instead of view tables
@@ -1853,6 +1893,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         ctx.min_coverage_for_variability = self.min_coverage_for_variability
         ctx.report_variability_full = self.report_variability_full
         ctx.min_percent_identity = self.min_percent_identity
+        ctx.compute_identity_histograms = self.compute_identity_histograms
         ctx.skip_edges = self.skip_edges
 
         # Metadata
@@ -2002,19 +2043,29 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.contig_names = self.bam.references
         self.contig_lengths = self.bam.lengths
 
-        if self.min_percent_identity:
-            # We will permit as many as 1% of sampled reads to lack the information needed to
-            # determine their percent identity, for whatever crazy mapping reason, although it is
-            # most probable that if 1 read is missing it, they all are.
-            requirement = lambda x: sum(x) / len(x) >= 0.99
+        # We will permit as many as 1% of sampled reads to lack the information needed to
+        # determine their percent identity, for whatever crazy mapping reason, although it is
+        # most probable that if 1 read is missing it, they all are. This information is required
+        # for --min-percent-identity, and for read identity histograms.
+        requirement = lambda x: sum(x) / len(x) >= 0.99
+        self.compute_identity_histograms = self.bam.reads_have_identity_information(require=requirement)
 
-            if not self.bam.reads_have_identity_information(require=requirement):
+        if not self.compute_identity_histograms:
+            if self.min_percent_identity:
                 raise ConfigError("Anvi'o can't determine the percent identity of many of the reads in your "
                                   "BAM file :/ This requires reads to have an MD tag or an NM tag (or a CIGAR "
                                   "string that uses the '=' and 'X' operations instead of 'M'), which give "
                                   "essential information about mismatches between reads and the reference. "
                                   "Unfortunately, this is required to use --min-percent-identity. Please "
                                   "remove this flag or redo your mapping.")
+            else:
+                self.run.warning("Anvi'o can't determine the percent identity of many of the reads in your BAM "
+                                 "file, since they lack MD or NM tags (and their CIGAR strings don't use the '=' "
+                                 "and 'X' operations instead of 'M'). This is not a problem for profiling, but "
+                                 "anvi'o will not compute histograms of read percent identities for this sample, "
+                                 "and the auxiliary database will not include them. If you need them, you can "
+                                 "add MD tags to your BAM file with `samtools calmd`, or redo your mapping.",
+                                 header="NO READ IDENTITY HISTOGRAMS")
 
         utils.check_contig_names(self.contig_names)
 
@@ -2220,7 +2271,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         timer.make_checkpoint('Gene info for split added')
 
         # analyze coverage for each split
-        contig.analyze_coverage(bam_file, self.min_percent_identity)
+        contig.analyze_coverage(bam_file, self.min_percent_identity, compute_identity_histograms=self.compute_identity_histograms)
         timer.make_checkpoint('Coverage done')
 
         if not self.skip_SNV_profiling:
@@ -2326,6 +2377,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
         self.store_contigs_buffer()
         self.store_zero_coverage_for_skipped_splits()
+        self.store_identity_histogram_meta()
         self.auxiliary_db.close()
 
         self._log_mem("after profiling + DB writes")
@@ -2356,6 +2408,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.layer_additional_data['num_SCVs_reported'] = self.variable_codons_table.num_entries
             self.layer_additional_keys.append('num_SCVs_reported')
             self.run.info("Num SCVs reported", self.layer_additional_data['num_SCVs_reported'])
+
+        self.report_identity_histograms()
 
         if self.total_reads_kept != self.num_reads_mapped:
             # Num reads in profile do not equal num reads in bam
@@ -2536,6 +2590,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
             self.store_contigs_buffer()
             self.store_zero_coverage_for_skipped_splits()
+            self.store_identity_histogram_meta()
             self.auxiliary_db.close()
 
             self._log_mem("after profiling + DB writes")
@@ -2565,6 +2620,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 self.layer_additional_data['num_SCVs_reported'] = self.variable_codons_table.num_entries
                 self.layer_additional_keys.append('num_SCVs_reported')
                 self.run.info("Num SCVs reported", self.layer_additional_data['num_SCVs_reported'])
+
+            self.report_identity_histograms()
 
             if self.total_reads_kept != self.num_reads_mapped:
                 diff = self.num_reads_mapped - self.total_reads_kept
@@ -2598,6 +2655,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 split.abundance = split.coverage.mean
 
             self.total_reads_kept += contig.coverage.num_reads
+
+            if self.compute_identity_histograms:
+                self.num_reads_without_identity += contig.coverage.num_reads_without_identity
+                self.num_reads_below_min_identity += sum(int(split.coverage.num_below_min_identity[0]) for split in contig.splits)
 
         self.generate_variable_nts_table()
         self.generate_variable_codons_table()
@@ -2767,7 +2828,7 @@ class WorkerContext:
         contig_name_to_genes, genes_in_contigs_dict, nt_positions_info,
         a_meta, sample_id, skip_SNV_profiling, skip_INDEL_profiling,
         profile_SCVs, min_coverage_for_variability, report_variability_full,
-        min_percent_identity, skip_edges, input_file_path, fetch_filter,
+        min_percent_identity, compute_identity_histograms, skip_edges, input_file_path, fetch_filter,
         contig_names, contig_lengths
 
     If process_contig or its callees are modified to access new attributes,
