@@ -46,6 +46,71 @@ MD_TOKENS = re.compile(r'(\d+)|(\^[A-Z]+)|([A-Z])')
 MD_HAS_NON_ACGT_LETTERS = re.compile(r'[^0-9ACGT^]')
 
 
+class ReadIdentityBins:
+    def __init__(self, min_identity=constants.READ_IDENTITY_HISTOGRAM_MIN, bin_width=constants.READ_IDENTITY_HISTOGRAM_BIN_WIDTH):
+        """Bins of read percent identity, for building histograms of reads by their identity to the reference
+
+        Bins are [min_identity, min_identity + bin_width), [min_identity + bin_width, min_identity + 2 *
+        bin_width), ..., [100 - bin_width, 100), [100, 100 + bin_width). Since identity can't exceed 100%,
+        the final bin holds only reads with 100% identity. For instance, a minimum of 80 and a width of 0.5
+        give 40 + 1 = 41 bins.
+
+        Parameters
+        ==========
+        min_identity : float, constants.READ_IDENTITY_HISTOGRAM_MIN
+            The lower limit of the first bin. Reads with a lower percent identity are not in any bin.
+
+        bin_width : float, constants.READ_IDENTITY_HISTOGRAM_BIN_WIDTH
+            The width of each bin.
+
+        Notes
+        =====
+        - Bin boundaries should be exactly representable as binary floats (e.g., a width of 0.5 or 0.25,
+          but not 0.1), so that reads with an identity that is exactly at a boundary land in the bin that
+          starts at that boundary.
+        """
+
+        if not 0 <= min_identity < 100:
+            raise ConfigError(f"ReadIdentityBins class here. The minimum percent identity for read identity bins must be at least "
+                              f"0 and less than 100, but it is {min_identity}.")
+
+        if bin_width <= 0:
+            raise ConfigError(f"ReadIdentityBins class here. The width of read identity bins must be positive, but it is {bin_width}.")
+
+        num_bins_below_100 = (100 - min_identity) / bin_width
+        if num_bins_below_100 != int(num_bins_below_100):
+            raise ConfigError(f"ReadIdentityBins class here. The range between the minimum percent identity for read identity bins "
+                              f"({min_identity}) and 100 must be a multiple of the bin width ({bin_width}), so that all bins are equally "
+                              f"wide.")
+
+        self.min_identity = min_identity
+        self.bin_width = bin_width
+        self.num_bins = int(num_bins_below_100) + 1
+
+
+    def get_bin_index(self, percent_identity):
+        """Returns the index of the bin for a percent identity (e.g., 95.2), or -1 if it is below the minimum
+
+        All bins are [lower limit, lower limit + bin_width). The final bin starts at 100, so it is where
+        reads with 100% identity end up.
+        """
+
+        if percent_identity < self.min_identity:
+            return -1
+
+        return int((percent_identity - self.min_identity) // self.bin_width)
+
+
+    def get_bin_lower_limits(self):
+        """Returns the lower limits of all bins as floats (the final one is 100.0)"""
+
+        return [self.min_identity + i * self.bin_width for i in range(self.num_bins)]
+
+
+# the bins used by anvi'o profiling, created once (which also validates the constants at import time)
+READ_IDENTITY_BINS = ReadIdentityBins()
+
+
 class PairedEndTemplateDist:
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
