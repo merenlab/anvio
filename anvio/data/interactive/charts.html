@@ -195,6 +195,20 @@
                   </table>
 
 
+                  <div id="identity_histograms_settings">
+                    <span class="settings-header">Read identity histograms</span>
+                    <p class="settings-section-info">Show the distribution of percent identities of reads that were recruited to this split in each sample, in the bottom-right corner of its coverage plot. Bars show the fraction of reads in each bin, from 100% on the left to lower identities on the right, where the grey bar shows reads with an identity below the first bin. The red background marks 95% identity and higher, the conventional species-level cutoff. Histograms describe the entire split, so they do not change when you zoom into a region. If reads were filtered by percent identity during profiling, the excluded range is shaded.</p>
+                    <p class="settings-section-info" id="identity_histograms_unavailable"></p>
+                    <table style="margin-bottom: 20px;">
+                      <tbody>
+                        <tr id="identity_histograms_picker">
+                          <td><div style="width: 20px;"><input id="toggle_identity_histograms_box" type="checkbox" class="layer_selectors"></div></td>
+                          <td>Show histograms</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
                   <span class="settings-header">Dynamic display features</span>
                   <p class="settings-section-info">If you zoom in enough on a region, nucleotide and codon information will appear at the bottom of your screen when applicable. Here you can toggle that feature and/or disable vertical lines that highlight the position of your mouse on the screen.</p>
                   <table style="margin-bottom: 20px;">

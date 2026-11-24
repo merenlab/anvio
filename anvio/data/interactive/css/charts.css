@@ -138,6 +138,15 @@
   color: red;
 }
 
+#identity_histograms_unavailable {
+  display: none;
+}
+
+#identity_histograms_picker.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 #settings-panel code {
 	padding: 1.4px 2px;
     font-size: 90%;
