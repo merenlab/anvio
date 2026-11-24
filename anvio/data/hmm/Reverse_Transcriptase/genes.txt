@@ -1,0 +1,11 @@
+gene	accession	hmmsource
+Clean_DGR_clade_5	DGR005	https://bitbucket.org/srouxjgi/dgr_scripts/src/master/
+Clean_DGR_clade_6	DGR006	https://bitbucket.org/srouxjgi/dgr_scripts/src/master/
+Clean_DGR_clade_1	DGR001	https://bitbucket.org/srouxjgi/dgr_scripts/src/master/
+Clean_DGR_clade_2	DGR002	https://bitbucket.org/srouxjgi/dgr_scripts/src/master/
+Clean_DGR_clade_3	DGR003	https://bitbucket.org/srouxjgi/dgr_scripts/src/master/
+Clean_DGR_clade_4	DGR004	https://bitbucket.org/srouxjgi/dgr_scripts/src/master/
+RVT_1	PF00078	pfam.xfam.org
+RVT_2	PF07727	pfam.xfam.org
+RVT_3	PF13456	pfam.xfam.org
+RVT_N	PF13655	pfam.xfam.org
