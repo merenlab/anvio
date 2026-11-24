@@ -110,7 +110,7 @@ The histograms include the same reads as the number of reads tables described ab
 
 **When are they stored**
 
-%(anvi-profile)s checks if the input BAM file contains the information used to compute percent identities by examining a sample of reads -- if less than 1%% are lacking this information, then identity histograms are computed.
+To compute percent identities, anvi'o needs reads that carry the right information in the BAM file. Thus, before profiling, %(anvi-profile)s will sample 10,000 reads from a given %(bam)s file to perform a sanity check. If at least 99%% of them carry the information needed for these calculations, it will calculate the identity histograms. Otherwise anvi'o will skip these calculations, and you will get a warning.
 
 The self table key `identity_histograms_stored` tells you whether the table contains data. It is `False` (0) for profiles that don't pass the aforementioned sanity check, as well as for blank profiles and for auxiliary data files migrated from version 2.
 
