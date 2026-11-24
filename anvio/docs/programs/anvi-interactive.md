@@ -54,10 +54,7 @@ The clustering of %(bin)ss in this case based on their distribution across sampl
 
 ### Genes mode: Visualizing *genes* instead of contigs
 
-You can also start the interactive interface in "gene mode", in which each item of the central tree is a gene instead of a split or contig (or
-
-
-bin like in "collection mode").
+You can also start the interactive interface in "gene mode", in which each item of the central tree is a gene instead of a split or contig (or bin like in "collection mode").
 
 To initiate the visualization in gene mode you need the following:
 
@@ -71,6 +68,10 @@ anvi-interactive -p %(profile-db)s \
 
 If there isn't one already, this command will automatically generate an anvi'o %(genes-db)s under the `GENES` directory at the same level of the profile database. When the same command is run again, %(anvi-interactive)s will use the existing genes database.
 
+In addition to the views for mean coverage, detection, and non-outlier mean coverage and standard deviation of each gene, gene mode by default also offers five views of normalized gene coverages, each with its own item order: `log1p`, `cov_per_million` (mean coverage depth per million mapped reads), and per-gene z-scores across samples for raw, log1p, and cov_per_million values (`zscore_raw`, `zscore_log1p`, and `zscore_cov_per_million`). Anvi'o computes them once, stores them in the genes database, and reads them from there in subsequent runs. Setting a __center__ value of 0 for z-score views in the interface will display them as diverging values. See %(anvi-gen-gene-level-stats-databases)s for details on what these normalizations are and how to interpret them.
+
+If you don't want these data, you can add the flag `--skip-computing-gene-level-normalized-coverages` to your command when the genes database is first created, in which case these views will not be available (normalized coverages that are already stored in a genes database will still be shown). This flag is required when your %(profile-db)s has only one sample and a new genes database is being created, since per-gene z-scores across samples are not meaningful with a single sample. This flag can only be used together with `--gene-mode`.
+
 In this view you can order genes based on their distributions patterns across metagenomes (*without paying attention to their synteny*) or by ordering them based on their synteny in a given genome (*without paying attention to their differential distribution*). [Figure 2 in this paper](https://peerj.com/articles/4320/) examples the latter, and [Figure 5 in this paper](https://stm.sciencemag.org/content/11/507/eaau9356) examples the former case, which is also shown below:
 
 ![](http://merenlab.org/images/gene-distribution-across-metagenomes.png)
@@ -79,14 +80,47 @@ You can also visit [this page](http://merenlab.org/tutorials/infant-gut/#the-gen
 
 ## Manual mode: visualize anything
 
-You can initiate the anvi'o interactive interface in manual mode to run it on *ad hoc* tabular data (here is [a tutorial on this](http://merenlab.org/tutorials/interactive-interface/)).
+You can also run the anvi'o interactive interface on *ad hoc* data that has nothing to do with anvi'o databases (here is [a tutorial on this](http://merenlab.org/tutorials/interactive-interface/)). To do that, you simply provide *any* of the following types of files individually or together, without a %(contigs-db)s:
 
-Anvi'o interactive interface is initiated with the flag `--manual-mode` and then by providing *any* of the following types of files individually or together:
+- a TAB-delimited tabular data (`--view-data`),
+- a NEWICK formatted tree (`--tree`),
 
-- a TAB-delimited tabular data,
-- a NEWICK formatted tree,
+For instance:
 
-When doing this kind of run, anvi'o does not expect you to have a profile database, but it still needs you to provide a name for it. Anvi'o will simply create an empty one for you so you can store your state or collections in it for reproducibility.
+{{ codestart }}
+anvi-interactive -d view_data.txt \
+                 -t tree.txt \
+                 -p my-display-PROFILE.db
+{{ codestop }}
+
+When doing this kind of run, anvi'o does not expect you to have a profile database, but it still needs you to provide a name for it. Anvi'o will simply create an empty one for you so you can store your state or collections in it for reproducibility. When you run the same command again, anvi'o will find the same profile database and will remember everything you have stored in it.
+
+{:.notice}
+Anvi'o recognizes this kind of run automatically, and starts the interface in what we call the 'manual mode'. In older versions of anvi'o you had to use the flag `--manual-mode` (or `--manual`) to ask for it explicitly. This is no longer necessary, but anvi'o will continue to accept these flags so your older commands will work.
+
+There is one case where you will need the `--manual-mode` flag: if you provide a tree or a data file without `-p` or `-c` in a directory where anvi'o can find a %(profile-db)s and a %(contigs-db)s, anvi'o can't tell whether you want to see your files alone, or on top of those databases. In that case it will ask you to be precise, either by using `--manual-mode` with a profile database path of your choice, or by providing the databases you want to use explicitly with `-p` and `-c`.
+
+If the items in your display have sequences (for instance, a tree you have computed from a multiple sequence alignment), you can also provide a FASTA file with `--fasta-file`, in which case the names of the sequences must match the names of the items in your display:
+
+{{ codestart }}
+anvi-interactive -t %(dendrogram)s \
+                 --fasta-file %(fasta)s \
+                 -p %(profile-db)s
+{{ codestop }}
+
+### Curating bins in manual mode
+
+In manual mode, clicking on the number of items of a bin in the Bins panel opens a curation window for that bin. This window lists every item in the bin with a checkbox, and offers buttons to select all items, none of them, or invert the current selection. Once you have selected some items, you can remove them from the bin, or move them to another bin. The window that opens when you choose to move items lists the existing bins, and also offers to move them to a new bin with a name anvi'o suggests (which you can change). New bins are created only when you apply your changes. These operations are only *staged*: the affected items are struck through and tagged in the window, and nothing happens to your bins until you click 'Apply'. Clicking 'Discard all changes' throws away all staged changes and lets you start over in the same window, and closing the window while there are staged changes discards them as well (after asking you to confirm). All changes applied at once can be reverted with a single 'undo'.
+
+The same window also shows a 'Sequences' section that lists the sequence of each item, so you can compare them and spot unexpected or odd ones that you may want to remove from the bin. Sequences are not wrapped, so if they come from an alignment their columns line up with each other. The checkboxes in this section are synchronized with those in the 'Splits' section, and you can copy the sequences of all remaining items, or only the checked ones, to your clipboard in FASTA format. If you do not wish to see the sequences, you can uncheck the box "Show sequences in the bin items window" in the Bins panel.
+
+If your sequences are not already aligned, you can check the box "Align sequences before showing them" in the Bins panel (it is unchecked by default). When it is checked, anvi'o aligns the sequences in the bin with its default aligner (any gap characters in your FASTA file are removed first), so their columns line up and odd sequences are easier to spot. In this case the FASTA you copy to your clipboard will contain the aligned sequences. Please keep in mind that aligning many or very long sequences may take a while. Aligned sequences are colored the same way %(anvi-display-pan)s colors the amino acid sequences of gene clusters (which is designed for amino acids, so colors will not mean much for nucleotide sequences), unless there are so many residues that coloring them would make the interface sluggish.
+
+### Getting a new FASTA file after curating bins
+
+In manual mode with a FASTA file, the Bins panel also offers to download a copy of the input FASTA either *excluding* the sequences in your bins, or *only* with the sequences in your bins. Clicking either of these buttons opens a window where you can select the bins to consider and change the name of the new file, which your browser will save like any other download. The new FASTA file reflects your bins as they are in the interface at that moment (whether you stored them in a collection or not), and its sequences appear in the same order and with the same deflines as in the input FASTA file. Entries in the input FASTA that do not appear in your display are kept when you exclude sequences in bins (since they can't be in a bin).
+
+If/when you provide a FASTA file to %(anvi-interactive)s, the combination of displaying sequences (with the option to align them on-the-fly) AND being able to move them around or mark them for deletion by adding unruly sequences to specific bins, becomes an extremely powerful way to manually curate your phylogenetic trees.
 
 ## Extending anvi'o displays
 

@@ -1183,25 +1183,6 @@ class PangenomeGraphUserInterface {
         return degrees * Math.PI/180;
     }
 
-    download_blob(blob, name) {
-
-        var blob_url = URL.createObjectURL(blob);
-        var link = document.createElement("a");
-        
-        link.href = blob_url;
-        link.download = name;
-        
-        document.body.appendChild(link);
-        
-        link.dispatchEvent(new MouseEvent('click', {
-            bubbles: true,
-            cancelable: true,
-            view: window
-        }));
-        
-        document.body.removeChild(link);
-    }
-
     // NOTE - From https://stackoverflow.com/questions/19799777/how-to-add-transparency-information-to-a-hex-color-code
     addAlpha(color, opacity) {
         var _opacity = Math.round(Math.min(Math.max(opacity ?? 1, 0), 1) * 255);
@@ -2197,7 +2178,7 @@ class PangenomeGraphUserInterface {
         var svg_download = this.generate_svg(0);
         var blob = new Blob([svg_download[0].outerHTML]);
         var title = this.data['meta']['project_name']
-        this.download_blob(blob, title + ".svg");
+        downloadBlob(blob, title + ".svg");
     }
     
     main_draw() {
@@ -5159,7 +5140,7 @@ class PangenomeGraphUserInterface {
         
         var blob = new Blob([csv_data]);
         var title = this.data['meta']['project_name']
-        this.download_blob(blob, title + ".csv");
+        downloadBlob(blob, title + ".csv");
     }
 
     alignment_download () {
@@ -5187,7 +5168,7 @@ class PangenomeGraphUserInterface {
             csv_data += genome.match(/.{1,60}/g).join("\r\n") + "\n"
         }
         var blob = new Blob([csv_data]);
-        this.download_blob(blob, title + ".fa");
+        downloadBlob(blob, title + ".fa");
     }
 
     async download_bin_fasta() {
@@ -5271,7 +5252,7 @@ class PangenomeGraphUserInterface {
         const project = (this.data['meta']['project_name'] || 'project').replace(/\s+/g, '_');
         const bin = (this._last_bin_name || 'bin').replace(/\s+/g, '_');
         const seq_type = report_dna ? 'DNA' : 'AA';
-        this.download_blob(new Blob([fasta]), `${project}_${bin}_GENES_${seq_type}.fa`);
+        downloadBlob(new Blob([fasta]), `${project}_${bin}_GENES_${seq_type}.fa`);
     }
 
     save_bin() {

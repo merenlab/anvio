@@ -902,13 +902,75 @@ function strip(html) {
 }
 
 /**
- * Clear min/max inputs for a selectbox row
+ * Clear min/max inputs for a selectbox row when its normalization changes. Center values are cleared
+ * as well, since a center value refers to normalized values, and would mean something entirely
+ * different (or nothing at all) under a different normalization
  * @param {HTMLElement} selectbox - Select element
  */
 function clearMinMax(selectbox) {
     const $tr = $(selectbox).parent().parent();
     $tr.find('.input-min').val('0').prop('disabled', true);
     $tr.find('.input-max').val('0').prop('disabled', true);
+
+    const $center = $tr.find('.input-center');
+    if ($center.length && $center.val().trim() !== '') {
+        // trigger change, so everything that depends on the center value (such as the min/max boxes) is updated
+        $center.val('').trigger('change');
+        notifyCenterValuesReset($tr.find('td.titles').attr('title'));
+    }
+}
+
+// layers whose center values were reset due to a change in normalization. when normalization is changed
+// for many layers at once (through the 'edit attributes for multiple layers' row), we collect them here
+// to tell the user about all of them with a single message rather than one message per layer
+var layers_with_center_values_reset = [];
+
+/**
+ * Tell the user that center values of one or more layers were reset after a change in normalization
+ * @param {string} layer_name - Name of the layer whose center value was reset
+ */
+function notifyCenterValuesReset(layer_name) {
+    layers_with_center_values_reset.push(layer_name);
+
+    // only the first layer schedules the message, which will include every layer reset until then
+    if (layers_with_center_values_reset.length > 1)
+        return;
+
+    setTimeout(function() {
+        const names = layers_with_center_values_reset;
+        layers_with_center_values_reset = [];
+
+        let layer_list = names.slice(0, 5).map(name => `'${name}'`).join(', ');
+        if (names.length > 5) {
+            layer_list += `, and ${names.length - 5} more`;
+        }
+
+        toastr.info(`The center value${names.length == 1 ? ' of ' : 's of '}${layer_list} ${names.length == 1 ? 'was' : 'were'} reset, ` +
+                    `since a center value refers to normalized values, and the one you had set would mean something ` +
+                    `entirely different under the new normalization. You can set a new center value any time (clicking ` +
+                    `on a center box will even offer you the mean and median of the newly normalized values).`,
+                    "Center values reset");
+    }, 0);
+}
+
+/**
+ * Make min/max input boxes of a layer read-only while the layer has a center value, since min/max values
+ * are not used for diverging layers. We use `readonly` rather than `disabled` here, because a disabled
+ * min/max box means something else (that min/max values are yet to be learned from the data), and it is
+ * stored in states as such.
+ * @param {jQuery} $tr - The table row of the layer
+ */
+function toggleMinMaxForCenter($tr) {
+    const has_center = ($tr.find('.input-center').val() || '').trim() !== '';
+    const $min_max = $tr.find('.input-min, .input-max');
+
+    $min_max.prop('readonly', has_center);
+
+    if (has_center) {
+        $min_max.attr('title', 'Min and max values are not used while this layer has a center value');
+    } else if ($min_max.attr('title') === 'Min and max values are not used while this layer has a center value') {
+        $min_max.removeAttr('title');
+    }
 }
 
 /**
@@ -919,8 +981,9 @@ function clearMinMax(selectbox) {
 function togglePickerStart(selectbox, togglePicker) {
     const $tr = $(selectbox).parent().parent();
     const showPickers = ['intensity', 'line', 'text'].includes(selectbox.value);
+    const hasCenterValue = $tr.find('.input-center').val() !== '';
 
-    if (showPickers) {
+    if (showPickers || hasCenterValue) {
         $tr.find('.picker_start').css('visibility', 'visible');
         if (togglePicker) {
             $tr.find('.picker_end').css('visibility', 'visible');
@@ -934,6 +997,121 @@ function togglePickerStart(selectbox, togglePicker) {
             $tr.find('.input-height').css('visibility', 'visible').val('30');
         }
     }
+}
+
+// numerical input boxes in layer tables (the main 'Display' table and the samples layers table), the column
+// names under which they appear, and whether they can be left empty
+const NUMERICAL_LAYER_INPUTS = {
+    'input-height': {'column': 'Height', 'can_be_empty': false},
+    'input-margin': {'column': 'Margin', 'can_be_empty': false},
+    'input-min':    {'column': 'Min',    'can_be_empty': true},
+    'input-max':    {'column': 'Max',    'can_be_empty': true},
+    'input-center': {'column': 'Center', 'can_be_empty': true},
+};
+
+/**
+ * Check whether the value of a numerical input box is acceptable
+ * @param {string} value - The value of the input box
+ * @param {boolean} can_be_empty - Whether an empty value is acceptable
+ * @returns {boolean} True if the value is a finite number (or empty, when allowed)
+ */
+function isValidNumericalInputValue(value, can_be_empty) {
+    value = (value === undefined || value === null) ? '' : String(value).trim();
+
+    // min/max values of samples layers are 'null' until they are computed for the first time
+    if (value === '' || value === 'null')
+        return can_be_empty;
+
+    return /^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/.test(value);
+}
+
+/**
+ * Find numerical input boxes with values that are not numbers in a layers table, and mark them
+ * @param {string} tbody_selector - Selector for the table body, e.g., '#tbody_layers'
+ * @returns {Array} A list of {layer_name, column, value} objects, one for each invalid input box
+ */
+function findInvalidNumericalLayerInputs(tbody_selector) {
+    const invalid_inputs = [];
+
+    $(tbody_selector + ' tr').each(function(index, tr) {
+        const $tr = $(tr);
+
+        // the main table keeps the layer name in the title of the name cell, the samples table in an attribute
+        const layer_name = $tr.find('td.titles').attr('title') || $tr.attr('samples-layer-name') || '(unknown layer)';
+
+        for (const class_name in NUMERICAL_LAYER_INPUTS) {
+            $tr.find('.' + class_name).each(function(i, input) {
+                const $input = $(input);
+
+                // inputs that are disabled or hidden are not used for drawing
+                if ($input.is(':disabled') || $input.css('visibility') === 'hidden' || $input.css('display') === 'none') {
+                    $input.removeClass('is-invalid');
+                    return;
+                }
+
+                if (isValidNumericalInputValue($input.val(), NUMERICAL_LAYER_INPUTS[class_name]['can_be_empty'])) {
+                    $input.removeClass('is-invalid');
+                } else {
+                    $input.addClass('is-invalid');
+                    invalid_inputs.push({'layer_name': layer_name,
+                                         'column': NUMERICAL_LAYER_INPUTS[class_name]['column'],
+                                         'value': $input.val()});
+                }
+            });
+        }
+    });
+
+    return invalid_inputs;
+}
+
+/**
+ * Check all numerical input boxes in the given layers tables, and warn the user about those that are not numbers
+ * @param {Array} tbody_selectors - Selectors for the table bodies to check
+ * @returns {boolean} True if everything is in order, false if there are invalid values
+ */
+function checkNumericalLayerInputs(tbody_selectors) {
+    let invalid_inputs = [];
+
+    for (const tbody_selector of tbody_selectors) {
+        invalid_inputs = invalid_inputs.concat(findInvalidNumericalLayerInputs(tbody_selector));
+    }
+
+    if (invalid_inputs.length === 0)
+        return true;
+
+    let examples = invalid_inputs.slice(0, 5).map(e => `'${e.value}' for ${e.column} of '${e.layer_name}'`).join(', ');
+    if (invalid_inputs.length > 5) {
+        examples += `, and ${invalid_inputs.length - 5} more`;
+    }
+
+    toastr.error(`Anvi'o can only work with numbers in these boxes, but it found ${invalid_inputs.length == 1 ? 'a value that is' : 'values that are'} ` +
+                 `not: ${examples}. ${invalid_inputs.length == 1 ? 'It is' : 'They are'} highlighted in the settings panel. ` +
+                 `Please fix ${invalid_inputs.length == 1 ? 'it' : 'them'} and try again.`,
+                 "Not a number", {'timeOut': 0, 'extendedTimeOut': 0, 'closeButton': true});
+
+    return false;
+}
+
+/**
+ * Check whether a color is so light that it would be nearly invisible on a white background
+ * @param {string} color - Hex color string, with or without the leading '#'
+ * @returns {boolean} True if the color is missing, malformed, or too light
+ */
+function isColorTooLight(color) {
+    if (!color)
+        return true;
+
+    const hex = color.replace(/^\s*#|\s*$/g, '');
+
+    if (!/^[0-9a-fA-F]{6}$/.test(hex))
+        return true;
+
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+
+    // perceived brightness, from 0 (black) to 255 (white)
+    return (0.299 * r + 0.587 * g + 0.114 * b) > 230;
 }
 
 /**
@@ -1234,6 +1412,32 @@ function zoom_reset() {
 // ─── Shared functions/metabolism display builders ────────────────────────────
 // Used by both anvi-display-pan (main.js) and anvi-display-pan-graph (pangenome-graph.js).
 // Kept here in utils.js so both interfaces can use them without loading main.js.
+
+/**
+ * Save a blob as a file through the browser's regular download mechanism.
+ * @param {Blob} blob - Content to save
+ * @param {string} name - Suggested file name
+ */
+function downloadBlob(blob, name) {
+    const blob_url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    link.href = blob_url;
+    link.download = name;
+
+    document.body.appendChild(link);
+
+    link.dispatchEvent(new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        view: window
+    }));
+
+    document.body.removeChild(link);
+
+    // release the memory held by the blob once the browser had a chance to start the download
+    setTimeout(() => URL.revokeObjectURL(blob_url), 10000);
+}
 
 function copyTextWithFeedback(btn, text) {
     if (typeof text !== 'string' || !text.length) return;

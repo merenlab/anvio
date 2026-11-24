@@ -15,7 +15,6 @@ import datetime
 import textwrap
 import threading
 import itertools
-import scipy.signal
 import pandas as pd
 
 # multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
@@ -56,6 +55,7 @@ from anvio.tables.miscdata import TableForLayerAdditionalData
 from anvio.tables.miscdata import TableForLayerOrders
 from anvio.tables.kmers import KMerTablesForContigsAndSplits
 from anvio.tables.genelevelcoverages import TableForGeneLevelCoverages
+from anvio.tables.genelevelcoverages import TableForGeneLevelNormalizedCoverages
 from anvio.tables.contigsplitinfo import TableForContigsInfo, TableForSplitsInfo
 
 from anvio.pangenomegraphmanager import PangenomeGraphManager
@@ -251,8 +251,8 @@ class ContigsSuperclass(object):
 
         if not self.contigs_db_path:
             raise ConfigError("Someone (hopefully, you) is trying to initialize the Contigs Super Class without a contigs database path. "
-                            "There are many ways this can happen, but .. do you think you were trying to run anvio-interactive in "
-                            "manual mode but without a --manual flag right before this? Just a gut feeling... No? Maybe you created "
+                            "There are many ways this can happen, but .. do you think you were trying to run anvio-interactive with "
+                            "ad hoc data files, but anvi'o didn't realize that's what you wanted? Just a gut feeling... No? Maybe you created "
                             "an instance of the profile superclass without a `contigs_db` argument in the namespace? No? Well, then we "
                             "may be in a really big trouble. Please run what you did before seeing this again with a `--debug` flag, "
                             "and send us an e-mail :(")
@@ -4329,6 +4329,7 @@ class ProfileSuperclass(object):
         # these are initialized by the member function `init_gene_level_coverage_stats_dicts`. but you knew
         # that already because you are a smart ass.
         self.gene_level_coverage_stats_dict = {}
+        self.gene_level_normalized_coverage_stats_dict = {}
         self.split_coverage_values_per_nt_dict = {}
 
         # this one becomes the object that gives access to the auxiliary data ops for split coverages
@@ -4370,7 +4371,6 @@ class ProfileSuperclass(object):
         init_split_coverage_values_per_nt = A('init_split_coverage_values_per_nt')
         outliers_threshold = A('outliers_threshold')
         zeros_are_outliers = A('zeros_are_outliers')
-        self.inseq_stats = A('inseq_stats')
 
         # early on let's check some ground truth
         if not self.profile_db_path:
@@ -4491,33 +4491,6 @@ class ProfileSuperclass(object):
 
         self.progress.end()
 
-        # learn the number of mapped reads and set it in a nice variable VERY CAREFULLY (blank profiles don't have it,
-        # and some ancient anvi'o databases may be lacking it).
-        if self.p_meta['blank']:
-            self.num_mapped_reads_per_sample = None
-        else:
-            if self.p_meta['merged']:
-                if 'total_reads_mapped' not in self.p_meta:
-                    self.num_mapped_reads_per_sample = None
-                else:
-                    total_reads_mapped = [int(num_reads) for num_reads in self.p_meta['total_reads_mapped'].split(',')]
-                    self.num_mapped_reads_per_sample = {self.p_meta['samples'][i]: total_reads_mapped[i] for i in range(0, len(self.p_meta['samples']))}
-            else:
-                sample_name = self.p_meta['samples'][0]
-
-                # create a copy of the args to avoid some misunderstanding downstream when THIS class is initiated with
-                # a gene_mode = True statement. Here we are trying to learn the layer additional data from a profile
-                # database. But if genes_mod = True, TableForLayerAdditionalData class will try to initialize for a genes
-                # database rather than a profile database. this workaround addresses that issue:
-                args = copy.deepcopy(self.args)
-                args.gene_mode = False
-                keys, data = TableForLayerAdditionalData(args, p=self.progress).get()
-
-                if 'total_reads_mapped' not in data[sample_name]:
-                    self.num_mapped_reads_per_sample = None
-                else:
-                    self.num_mapped_reads_per_sample = {sample_name: int(data[sample_name]['total_reads_mapped'])}
-
         profile_db.disconnect()
 
         self.p_meta['available_item_orders'], self.item_orders = get_item_orders_from_db(self.profile_db_path)
@@ -4602,7 +4575,6 @@ class ProfileSuperclass(object):
         table_for_gene_level_coverages = TableForGeneLevelCoverages(self.genes_db_path,
                                                                     parameters,
                                                                     split_names=self.split_names_of_interest,
-                                                                    mode="INSEQ" if self.inseq_stats else "STANDARD",
                                                                     run=self.run)
 
         if gene_caller_ids_to_exclude:
@@ -4621,13 +4593,174 @@ class ProfileSuperclass(object):
         table_for_gene_level_coverages = TableForGeneLevelCoverages(self.genes_db_path,
                                                                     parameters,
                                                                     split_names=self.split_names_of_interest,
-                                                                    mode="INSEQ" if self.inseq_stats else "STANDARD",
                                                                     run=self.run)
 
         self.gene_level_coverage_stats_dict = table_for_gene_level_coverages.read()
 
 
-    def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0, outliers_threshold=1.5, zeros_are_outliers=False, callback=None, callback_interval=100, init_split_coverage_values_per_nt=False, gene_caller_ids_of_interest=set([])):
+    def init_gene_level_normalized_coverage_stats_dicts(self, compute_if_missing=False):
+        """Populate `self.gene_level_normalized_coverage_stats_dict`.
+
+        If the genes database already has normalized coverage stats stored, reads them from
+        there regardless of `compute_if_missing`. Otherwise, if `compute_if_missing` is True,
+        computes all five normalizations from `non_outlier_mean_coverage` values in
+        `self.gene_level_coverage_stats_dict` and stores them in the genes database. If it
+        is False, leaves the dictionary empty.
+
+        Parameters
+        ==========
+        compute_if_missing : bool
+            Whether to compute and store normalized coverage stats when the genes database
+            does not have them yet.
+        """
+
+        if not self.genes_db_path or not self.genes_db_available:
+            if compute_if_missing:
+                raise ConfigError("Normalized gene-level coverage stats can only be computed when a genes "
+                                  "database is available, but anvi'o could not find one for this run :/")
+
+            return
+
+        genes_db_obj = db.DB(self.genes_db_path, None, ignore_version=True)
+        normalized_coverages_stored = genes_db_obj.get_meta_value('gene_level_normalized_coverages_stored', return_none_if_not_in_table=True)
+        genes_db_obj.disconnect()
+
+        if normalized_coverages_stored:
+            table = TableForGeneLevelNormalizedCoverages(self.genes_db_path, run=self.run, progress=self.progress)
+            self.gene_level_normalized_coverage_stats_dict = table.read()
+            return
+
+        if not compute_if_missing:
+            return
+
+        # z-scores are meaningless with a single sample. for new genes databases the user is asked to opt out explicitly
+        # (see `init_gene_level_coverage_stats_dicts`), but existing ones are not, so we quietly skip them here
+        if self.p_meta['num_samples'] == 1:
+            return
+
+        if not len(self.gene_level_coverage_stats_dict):
+            raise ConfigError("Normalized gene-level coverage stats cannot be computed because the raw "
+                              "gene-level coverage stats dictionary is empty. Please make sure "
+                              "`init_gene_level_coverage_stats_dicts` ran successfully before calling "
+                              "this function.")
+
+        self.compute_and_store_gene_level_normalized_coverage_stats()
+
+
+    def compute_and_store_gene_level_normalized_coverage_stats(self):
+        """Compute all five normalizations of `non_outlier_mean_coverage` and store them.
+
+        Normalizations computed
+        =======================
+        log1p                  : log(non_outlier_mean_coverage + 1), reduces dynamic range
+        cov_per_million        : non_outlier_mean_coverage / mapped_reads_in_sample * 1e6, mean
+                                 coverage depth per million mapped reads (note that this is not
+                                 CPM, i.e., counts per million); accounts for differences in
+                                 sequencing depth across samples
+        zscore_raw             : per-gene z-score of raw non_outlier_mean_coverage across samples;
+                                 captures how many standard deviations a gene's coverage in a
+                                 given sample deviates from that gene's mean coverage across all
+                                 samples
+        zscore_log1p           : same as zscore_raw but applied to log1p-transformed values
+        zscore_cov_per_million : same as zscore_raw but applied to cov_per_million values
+
+        For any gene where the standard deviation across samples is 0 (including genes with
+        0 coverage in all samples), z-scores are set to 0.0. Profile databases with a single
+        sample are not accepted, since all z-scores would be 0.0.
+
+        Notes
+        =====
+        - cov_per_million and zscore_cov_per_million require the number of reads mapped to each sample, which is read
+          from the 'total_reads_mapped' key in the layer additional data of the profile
+          database. If it is not available for every sample (e.g., very old databases),
+          nothing is computed or stored, and a warning is emitted.
+        """
+
+        sample_names = self.p_meta['samples']
+
+        # learn the number of reads mapped to each sample from the layer additional data of the profile
+        # database. we read it by sample name, rather than from the comma-separated 'total_reads_mapped'
+        # value in the self table of merged profiles, since the order of that list follows the order of
+        # input profiles, which is not necessarily the order of `self.p_meta['samples']`. we explicitly set
+        # `gene_mode` to False, otherwise TableForLayerAdditionalData would read from the genes database.
+        layer_data_args = argparse.Namespace(profile_db=self.profile_db_path, gene_mode=False)
+        _, layer_additional_data = TableForLayerAdditionalData(layer_data_args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False)).get()
+
+        if all(s in layer_additional_data and 'total_reads_mapped' in layer_additional_data[s] for s in sample_names):
+            num_mapped_reads_per_sample = {s: int(layer_additional_data[s]['total_reads_mapped']) for s in sample_names}
+        else:
+            num_mapped_reads_per_sample = None
+
+        if not num_mapped_reads_per_sample or not all(num_mapped_reads_per_sample.values()):
+            self.run.warning("Anvi'o was going to compute normalized gene-level coverage stats (log1p, cov_per_million, and "
+                             "z-scores), but it needs the number of reads mapped per sample to compute coverage-per-million-based "
+                             "normalizations, and this information is not available for your profile database. "
+                             "This can happen with very old anvi'o profile databases that pre-date storage of "
+                             "this value. Anvi'o will skip this step, and normalized views will not be available. "
+                             "Everything else will work as usual.", header="NO NORMALIZED GENE COVERAGES FOR YOU")
+            return
+
+        gene_callers_ids = sorted(self.gene_level_coverage_stats_dict.keys())
+
+        if len(sample_names) == 1:
+            raise ConfigError("compute_and_store_gene_level_normalized_coverage_stats :: normalized gene-level coverage "
+                              "stats cannot be computed for a profile database with a single sample.")
+
+        self.progress.new("Computing gene-level normalized coverage stats")
+        self.progress.update("Building coverage matrix from non_outlier_mean_coverage values...")
+
+        # build genes x samples matrix of non_outlier_mean_coverage values
+        raw_matrix = numpy.zeros((len(gene_callers_ids), len(sample_names)), dtype=float)
+        for i, gene_callers_id in enumerate(gene_callers_ids):
+            for j, sample_name in enumerate(sample_names):
+                entry = self.gene_level_coverage_stats_dict[gene_callers_id].get(sample_name)
+                raw_matrix[i, j] = entry['non_outlier_mean_coverage'] if entry else 0.0
+
+        self.progress.update("Computing log1p...")
+        log1p_matrix = numpy.log1p(raw_matrix)
+
+        self.progress.update("Computing coverage per million mapped reads...")
+        mapped_reads = numpy.array([num_mapped_reads_per_sample[s] for s in sample_names], dtype=float)
+        cov_per_million_matrix = raw_matrix / mapped_reads * 1e6
+
+        self.progress.update("Computing z-scores...")
+
+        def zscore_matrix(matrix):
+            """Per-gene z-score across samples. Genes with std=0 get z-score of 0.0."""
+            means = matrix.mean(axis=1, keepdims=True)
+            stds = matrix.std(axis=1, keepdims=True)
+            with numpy.errstate(invalid='ignore'):
+                return numpy.where(stds == 0, 0.0, (matrix - means) / stds)
+
+        zscore_raw_matrix = zscore_matrix(raw_matrix)
+        zscore_log1p_matrix = zscore_matrix(log1p_matrix)
+        zscore_cov_per_million_matrix = zscore_matrix(cov_per_million_matrix)
+
+        self.progress.update("Assembling result dict...")
+        data = {}
+        for i, gene_callers_id in enumerate(gene_callers_ids):
+            data[gene_callers_id] = {}
+            for j, sample_name in enumerate(sample_names):
+                data[gene_callers_id][sample_name] = {'log1p': float(log1p_matrix[i, j]),
+                                                      'cov_per_million': float(cov_per_million_matrix[i, j]),
+                                                      'zscore_raw': float(zscore_raw_matrix[i, j]),
+                                                      'zscore_log1p': float(zscore_log1p_matrix[i, j]),
+                                                      'zscore_cov_per_million': float(zscore_cov_per_million_matrix[i, j])}
+
+        self.progress.end()
+
+        self.gene_level_normalized_coverage_stats_dict = data
+
+        table = TableForGeneLevelNormalizedCoverages(self.genes_db_path, run=self.run, progress=self.progress)
+        table.store(data)
+
+        self.run.warning(None, header="GENE LEVEL NORMALIZED COVERAGE STATS COMPUTED", lc="green")
+        self.run.info("Num genes", len(data))
+        self.run.info("Num samples", len(sample_names))
+        self.run.info("Normalizations", "log1p, cov_per_million, zscore_raw, zscore_log1p, zscore_cov_per_million")
+
+
+    def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0, outliers_threshold=1.5, zeros_are_outliers=False, callback=None, callback_interval=100, init_split_coverage_values_per_nt=False, gene_caller_ids_of_interest=set([]), compute_gene_level_normalized_coverages=False):
         """This function will populate both `self.split_coverage_values_per_nt_dict` and
            `self.gene_level_coverage_stats_dict`.
 
@@ -4643,7 +4776,7 @@ class ProfileSuperclass(object):
             'min_cov_for_detection': min_cov_for_detection,
             'outliers_threshold': outliers_threshold,
             'zeros_are_outliers': zeros_are_outliers,
-            'mode': 'INSEQ' if self.inseq_stats else 'STANDARD'
+            'mode': 'STANDARD'
         }
 
         if self.p_meta['blank']:
@@ -4651,6 +4784,20 @@ class ProfileSuperclass(object):
                              "Anvi'o will pretend nothing happened, and will return nothing. If you don't know what this "
                              "is warning you about, just carry on.")
             return
+
+        # normalized gene-level coverages include per-gene z-scores across samples, which are meaningless with a single
+        # sample. so when a genes database is about to be created for a single-sample profile, we want the user to
+        # explicitly opt out of them. we check this here, before anything is computed or a genes database is created,
+        # so the user can simply re-run the same command with the skip flag. if the genes database already exists, the
+        # user has made this decision before, and we don't ask again (normalized coverages will simply not be computed,
+        # see `init_gene_level_normalized_coverage_stats_dicts`)
+        if compute_gene_level_normalized_coverages and self.genes_db_path and not self.genes_db_available and self.p_meta['num_samples'] == 1:
+            raise ConfigError(f"Your profile database has only one sample ('{self.p_meta['samples'][0]}'). By default, anvi'o "
+                              f"computes normalized gene-level coverage stats when it generates gene-level coverage stats for "
+                              f"a genes database, but these include per-gene z-scores across samples, which are not meaningful "
+                              f"with a single sample. Please run the same command again with the flag "
+                              f"`--skip-computing-gene-level-normalized-coverages`, so it is clear to everyone that normalized "
+                              f"coverage values will not be computed, and normalized views will not be available.")
 
         if not self.auxiliary_profile_data_available:
             raise ConfigError("Someone is asking gene-level coverage stats to be computed, but then there is no AUXILIARY-DATA.db "
@@ -4686,25 +4833,7 @@ class ProfileSuperclass(object):
         if self.genes_db_path and self.genes_db_available:
             # THIS IS A SPECIAL CASE, where someone is initializing the gene-level coverage
             # stats for a single bin. In this case anvi'o will want to work with a genes
-            # database to read from, or to populate one for later uses. But the proplem is,
-            # we may be called from a part of the code that doesn't know what KIND of genes
-            # database is being called. Therefore, the `parameters` dict we are about to send
-            # to `init_gene_level_coverage_stats_from_genes_db` may contain the default
-            # `mode` value set before. BUT WE DON'T WANT THAT.
-            mode_set_in_db = db.DB(self.genes_db_path, client_version=None, ignore_version=True).get_meta_value('mode')
-
-            self.run.warning("A gene stats database of type '%s' is found (anvi'o hopes that this is the type of stats you "
-                             "were expecting to find)." % mode_set_in_db.upper())
-
-            parameters['mode'] = mode_set_in_db
-
-            # since we are here and learned the mode, we can also set the self.inseq_stats variable IF the table
-            # is actually inseq stats table. if we don't do this, the interactive interface will never load the inseq
-            # data because this variable is not set anywhere :/ the best practice would have been using a mode variable
-            # rather than an operation specific boolean flag, but well .. apologies to future generations of developers:
-            if mode_set_in_db == "INSEQ":
-                self.inseq_stats = True
-
+            # database to read from, or to populate one for later uses.
             self.init_gene_level_coverage_stats_from_genes_db(parameters)
         elif self.genes_db_path and not self.genes_db_available:
             self.run.warning("You don't seem to have a genes database associated with your profile database. "
@@ -4723,13 +4852,17 @@ class ProfileSuperclass(object):
             if init_split_coverage_values_per_nt:
                 self.init_split_coverage_values_per_nt_dict(split_names)
 
+            # normalized coverage stats are read from the genes database whenever they are stored there,
+            # and computed only if the caller asked for it
+            self.init_gene_level_normalized_coverage_stats_dicts(compute_if_missing=compute_gene_level_normalized_coverages)
+
             # we have nothing to do here anymore. and can return.
             return
 
         # if we have not 'returned' yet it means we gotta go through this
         self.init_split_coverage_values_per_nt_dict(split_names)
 
-        self.progress.new('Computing gene-level coverage stats in %s mode...' % ('INSEQ' if self.inseq_stats else 'STANDARD'))
+        self.progress.new('Computing gene-level coverage stats ...')
         self.progress.update('...')
 
         num_splits, counter = len(split_names), 1
@@ -4773,6 +4906,8 @@ class ProfileSuperclass(object):
                 # we computed all the stuff, and we can as well store them into the genes db.
                 self.store_gene_level_coverage_stats_into_genes_db(parameters, gene_caller_ids_to_exclude=failed_gene_caller_ids_set)
 
+        self.init_gene_level_normalized_coverage_stats_dicts(compute_if_missing=compute_gene_level_normalized_coverages)
+
 
     def init_split_coverage_values_per_nt_dict(self, split_names=None):
         if not self.auxiliary_profile_data_available:
@@ -4796,11 +4931,7 @@ class ProfileSuperclass(object):
 
 
     def get_gene_level_coverage_stats_entry_for_default(self, gene_callers_id, split_coverage, sample_name, gene_start, gene_stop, gene_length, outliers_threshold=1.5):
-        """Returns coverage stats for a single gene in default mode.
-
-        The alternative to this mode is the INSEQ/Tn-SEQ mode that is handled in `get_gene_level_coverage_stats_entry_for_inseq`,
-        where coverage statistics are computed differently.
-        """
+        """Returns coverage stats for a single gene."""
         # and recover the gene coverage array per position for a given sample:
         gene_coverage_values_per_nt = split_coverage[sample_name][gene_start:gene_stop]
 
@@ -4834,108 +4965,6 @@ class ProfileSuperclass(object):
                 'non_outlier_coverage_std': non_outlier_coverage_std,
                 'gene_coverage_values_per_nt': gene_coverage_values_per_nt,
                 'non_outlier_positions': non_outlier_positions}
-
-
-    def get_gene_level_coverage_stats_entry_for_inseq(self, gene_callers_id, split_coverage, sample_name, gene_start, gene_stop, gene_length, outliers_threshold=0.9):
-        """Returns coverage stats for a single gene in INSEQ/Tn-SEQ mode.
-
-           The alternative to this mode is the default mode that is handled in `get_gene_level_coverage_stats_entry_for_default`,
-           where coverage statistics are computed in most conventional ways.
-        """
-
-        # Lets ignore those pesky warnings...
-        numpy.seterr(divide='ignore', over='ignore')
-
-        if not len(self.num_mapped_reads_per_sample):
-            raise ConfigError("Total read counts were not set for this database, without which INSEQ/Tn-SEQ coverage stats "
-                              "can't be recovered :/ This number is automatically set by anvi'o during profiling given the "
-                              "short read information in BAM files that match to contigs of interest. If you are working with "
-                              "a 'blank' anvi'o profile database, there is no hope for you (since there is no BAM files involved "
-                              "in that workflow), but if you are working with a legacy database there are other ways to set this "
-                              "number (for instance, by using `anvi-db-info` program to set a `total_reads_mapped` variable). "
-                              "If you want to do this but have no idea how this would work, please get in touch with the anvi'o "
-                              "community and someone will help you :)")
-
-        total_read_counts_in_sample = self.num_mapped_reads_per_sample[sample_name]
-        gene_coverage_values_per_nt = split_coverage[sample_name][gene_start:gene_stop]
-
-        # if we fail the following, there is something absolutely very very wrong with
-        # this gene call as it does not seem to be in the split in which it is supposed
-        # to be.
-        if not len(gene_coverage_values_per_nt):
-            return None
-
-        # variables for INSEQ/Tn-SEQ views
-        mean_coverage = 0
-        total_counts_of_sites_in_gene = 0
-        total_counts_of_sites_in_gene_normalized = 0
-        mean_three_prime = 0
-        below_threshold = 0
-
-        # Split gene coverage values into splits that are nonzero
-        insertion_splits_nonzero = [numpy.array(list(g)) for k, g in itertools.groupby(gene_coverage_values_per_nt, lambda x: x != 0) if k]
-        if insertion_splits_nonzero:
-            for split in insertion_splits_nonzero:
-                ta_sites = scipy.signal.find_peaks(split)[0]
-
-                gene_sites_stats = list()
-                if ta_sites.any():
-                    # If we found high peaks, then we check if they are TA sites.
-                    for ta_index in ta_sites:
-                        index_highest_peak = numpy.where(gene_coverage_values_per_nt == split[ta_index])[0][0]
-                        value_highest_peak = gene_coverage_values_per_nt[index_highest_peak]
-
-                        # Need to check left and right indexes to see it part of TA site
-                        check_sites_dict = {gene_coverage_values_per_nt[index_highest_peak + 1]: index_highest_peak + 1,
-                                            gene_coverage_values_per_nt[index_highest_peak - 1]: index_highest_peak - 1}
-
-                        # Need to check left and right indexes to see it part of TA site
-                        value_second_highest_possible_peak = min(check_sites_dict.keys(), key=lambda x: abs(x - value_highest_peak))
-                        index_second_highest_possible_peak = check_sites_dict[value_second_highest_possible_peak]
-
-                        # Decide which one is left and right.
-                        if index_highest_peak > index_second_highest_possible_peak:
-                            index_left_ta, index_right_ta = index_second_highest_possible_peak, index_highest_peak
-                        elif index_highest_peak < index_second_highest_possible_peak:
-                            index_left_ta, index_right_ta = index_highest_peak, index_second_highest_possible_peak
-
-                        value_left_ta, value_right_ta = gene_coverage_values_per_nt[index_left_ta], gene_coverage_values_per_nt[index_right_ta]
-
-                        # Now, average left and right counts, and get three prime value.
-                        count_site_in_gene = (value_left_ta + value_right_ta) / 2
-                        three_prime = (index_right_ta + 1) / gene_length
-
-                        gene_sites_stats.append(
-                            {"l": index_left_ta, "r": index_right_ta, "l_value": value_left_ta, "r_value": value_right_ta, '3-primeness': three_prime,
-                             'count': count_site_in_gene})
-
-                        total_counts_of_sites_in_gene += count_site_in_gene
-
-                    # CPM math
-                    total_counts_of_sites_in_gene_normalized = (total_counts_of_sites_in_gene * 10e6) / total_read_counts_in_sample
-                    # Disruption in gene math
-                    mean_three_prime = numpy.mean(numpy.array([i['3-primeness'] for i in gene_sites_stats]))
-                    # Calculate the proportion of insertions that fell below the outlier threshold, important for knowing if insertions are effective
-                    below_threshold = round(sum([i["count"] for i in gene_sites_stats if i['3-primeness'] <= outliers_threshold])/total_counts_of_sites_in_gene * 100, 2)
-
-                # Didnt find any TA site :( life is sad
-                # Lets be sad and take the mean of whole split, whatever
-                else:
-                    pass
-                mean_coverage += numpy.mean(split)
-
-            # Check that counts are not too small... Think about dead bacteria that dont actually contribute to fitness.
-            if mean_coverage < 3:
-                mean_coverage = 0
-
-        return {'gene_callers_id': gene_callers_id,
-                'sample_name': sample_name,
-                'gene_coverage_values_per_nt': gene_coverage_values_per_nt,
-                'mean_coverage': float(mean_coverage),
-                'insertions': total_counts_of_sites_in_gene,
-                'insertions_normalized': total_counts_of_sites_in_gene_normalized,
-                'mean_disruption': mean_three_prime,
-                'below_disruption': below_threshold}
 
 
     def get_gene_level_coverage_stats(self, split_name, contigs_db, min_cov_for_detection=0, outliers_threshold=1.5,
@@ -5011,22 +5040,13 @@ class ProfileSuperclass(object):
 
             # the magic happens here:
             for sample_name in self.p_meta['samples']:
-                if self.inseq_stats:
-                    gene_coverage_stats = self.get_gene_level_coverage_stats_entry_for_inseq(gene_callers_id=gene_callers_id,
-                                                                                             split_coverage=split_coverage,
-                                                                                             sample_name=sample_name,
-                                                                                             gene_start=gene_start,
-                                                                                             gene_stop=gene_stop,
-                                                                                             gene_length=gene_length,
-                                                                                             outliers_threshold=outliers_threshold)
-                else:
-                    gene_coverage_stats = self.get_gene_level_coverage_stats_entry_for_default(gene_callers_id=gene_callers_id,
-                                                                                               split_coverage=split_coverage,
-                                                                                               sample_name=sample_name,
-                                                                                               gene_start=gene_start,
-                                                                                               gene_stop=gene_stop,
-                                                                                               gene_length=gene_length,
-                                                                                               outliers_threshold=outliers_threshold)
+                gene_coverage_stats = self.get_gene_level_coverage_stats_entry_for_default(gene_callers_id=gene_callers_id,
+                                                                                           split_coverage=split_coverage,
+                                                                                           sample_name=sample_name,
+                                                                                           gene_start=gene_start,
+                                                                                           gene_stop=gene_stop,
+                                                                                           gene_length=gene_length,
+                                                                                           outliers_threshold=outliers_threshold)
 
                 if not gene_coverage_stats:
                     # if we got a None here, it means there was something wrong with this gene caller.
@@ -5514,7 +5534,7 @@ class GenesDatabase:
         self.db.create_table(t.layer_additional_data_table_name, t.layer_additional_data_table_structure, t.layer_additional_data_table_types)
         self.db.create_table(t.layer_orders_table_name, t.layer_orders_table_structure, t.layer_orders_table_types)
         self.db.create_table(t.gene_level_coverage_stats_table_name, t.gene_level_coverage_stats_table_structure, t.gene_level_coverage_stats_table_types)
-        self.db.create_table(t.gene_level_inseq_stats_table_name, t.gene_level_inseq_stats_table_structure, t.gene_level_inseq_stats_table_types)
+        self.db.create_table(t.gene_level_normalized_coverages_table_name, t.gene_level_normalized_coverages_table_structure, t.gene_level_normalized_coverages_table_types)
         self.db.create_table(t.collections_info_table_name, t.collections_info_table_structure, t.collections_info_table_types)
         self.db.create_table(t.collections_bins_info_table_name, t.collections_bins_info_table_structure, t.collections_bins_info_table_types)
         self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
@@ -5534,6 +5554,7 @@ class GenesDatabase:
 
         self.db.set_meta_value('creation_date', time.time())
         self.db.set_meta_value('gene_level_coverages_stored', False)
+        self.db.set_meta_value('gene_level_normalized_coverages_stored', False)
         self.db.set_meta_value('items_ordered', False)
 
         self.disconnect()

@@ -34,6 +34,7 @@ anvio/data/misc/PROSTT5/
 anvio/data/misc/Pfam/
 anvio/data/misc/PDB.db
 anvio/data/misc/CAZyme/
+anvio/data/misc/AMRFinder/
 anvio/data/misc/GlobDB/
 anvio/data/misc/ModelSEED/
 anvio/data/misc/Interacdome/

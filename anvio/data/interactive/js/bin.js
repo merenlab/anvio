@@ -380,7 +380,6 @@ Bins.prototype._prepareDeletionTransaction = function(bin_id) {
 
     // Record node removals
     for (const node of this.selections[bin_id].values()) {
-        node.ResetColor();
         if (this.keepHistory) {
             transaction.push({
                 'type': TRANSACTION_TYPES.REMOVE_NODE,
@@ -554,7 +553,6 @@ Bins.prototype.AppendNode = function(targets, bin_id) {
         bin_id = this.GetSelectedBinId();
     }
 
-    const bin_color = this.GetBinColor(bin_id);
     const bins_to_update = new Set();
     const transaction = [];
 
@@ -577,7 +575,7 @@ Bins.prototype.AppendNode = function(targets, bin_id) {
                 processedNodes.add(expandedNode);
 
                 this._removeNodeFromOtherBins(expandedNode, bin_id, bins_to_update, transaction);
-                this._addNodeToBin(expandedNode, bin_id, bin_color, bins_to_update, transaction);
+                this._addNodeToBin(expandedNode, bin_id, bins_to_update, transaction);
             }
         }
     }
@@ -612,7 +610,7 @@ Bins.prototype._removeNodeFromOtherBins = function(node, current_bin_id, bins_to
  * Add node to bin
  * @private
  */
-Bins.prototype._addNodeToBin = function(node, bin_id, bin_color, bins_to_update, transaction) {
+Bins.prototype._addNodeToBin = function(node, bin_id, bins_to_update, transaction) {
     if (!this.selections[bin_id].has(node)) {
         this.selections[bin_id].add(node);
         bins_to_update.add(bin_id);
@@ -625,8 +623,6 @@ Bins.prototype._addNodeToBin = function(node, bin_id, bin_color, bins_to_update,
             });
         }
     }
-
-    node.SetColor(bin_color);
 };
 
 /**
@@ -672,7 +668,6 @@ Bins.prototype.RemoveNode = function(targets, bin_id) {
                 processedNodes.add(expandedNode);
 
                 this._removeNodeFromAllBins(expandedNode, bins_to_update, transaction);
-                expandedNode.ResetColor();
             }
         }
     }
@@ -737,6 +732,33 @@ Bins.prototype.PushHistory = function(transaction) {
 };
 
 /**
+ * Run a function that performs multiple node operations (i.e., multiple calls to
+ * AppendNode / RemoveNode) so they end up in the history as a single transaction,
+ * and a single undo reverts all of them.
+ * @param {Function} fn - Function that performs the operations
+ */
+Bins.prototype.RunAsSingleTransaction = function(fn) {
+    const collected = [];
+
+    // temporarily shadow the prototype method on this instance to collect transactions
+    this.PushHistory = function(transaction) {
+        if (transaction) {
+            collected.push(...transaction);
+        }
+    };
+
+    try {
+        fn();
+    } finally {
+        delete this.PushHistory;
+    }
+
+    if (collected.length) {
+        this.PushHistory(collected);
+    }
+};
+
+/**
  * Undo last operation
  */
 Bins.prototype.Undo = function() {
@@ -777,8 +799,13 @@ Bins.prototype.ProcessTransaction = function(transaction, reversed = false) {
     const updated_bins = new Set();
     const removed_bins = new Set();
 
-    // Process each operation
-    for (const operation of transaction) {
+    // Process each operation. When undoing, operations must be reverted in the reverse order
+    // they were applied: e.g., moving a node from bin A to bin B records [remove from A, append
+    // to B], and reverting 'append to B' (which removes the node from all bins) after reverting
+    // 'remove from A' would leave the node in no bin at all.
+    const operations = reversed ? [...transaction].reverse() : transaction;
+
+    for (const operation of operations) {
         updated_bins.add(operation.bin_id);
 
         if (reversed) {
@@ -796,7 +823,6 @@ Bins.prototype.ProcessTransaction = function(transaction, reversed = false) {
     // Re-enable features and update
     this.keepHistory = true;
     this.allowRedraw = true;
-    this.RebuildIntersections();
     this.RedrawBins();
     this.UpdateBinsWindow(bins_to_update);
 };
@@ -1451,7 +1477,6 @@ Bins.prototype.ImportCollection = function(collection, threshold = 1000) {
     }
 
     if (bins_cleared) {
-        this.RebuildIntersections();
         this.UpdateBinsWindow();
         this.RedrawBins();
 
@@ -1633,16 +1658,28 @@ Bins.prototype.ClearHighlightedItems = function() {
 // ============================================================================
 
 /**
- * Redraw line colors for all bins
+ * Paint every visible branch of the tree: the bin color for nodes that belong to a bin
+ * (see RebuildIntersections), the default line color for all others.
  */
 Bins.prototype.RedrawLineColors = function() {
-    for (const bin_id in this.selections) {
-        if (this.selections[bin_id].size === 0) continue;
+    if (!drawer || !drawer.tree || !drawer.tree.root) return;
 
+    const node_colors = new Map();
+    for (const bin_id in this.selections) {
         const bin_color = this.GetBinColor(bin_id);
+        if (!bin_color) continue;
+
         for (const node of this.selections[bin_id].values()) {
-            if (node === null) return;
+            if (node) node_colors.set(node, bin_color);
+        }
+    }
+
+    for (const node of drawer.tree.root.IterateChildren()) {
+        const bin_color = node_colors.get(node);
+        if (bin_color) {
             node.SetColor(bin_color);
+        } else {
+            node.ResetColor();
         }
     }
 };
@@ -1741,6 +1778,9 @@ Bins.prototype._drawInvertedRectangle = function(p, idx, rectX, width, color, op
 Bins.prototype.RedrawBins = function() {
     if (!drawer || !this.allowRedraw) return;
 
+    this.RebuildIntersections();
+    this.RedrawLineColors();
+
     // Build leaf assignment list
     const leaf_list = this._buildLeafAssignmentList();
 
@@ -1782,7 +1822,6 @@ Bins.prototype._buildLeafAssignmentList = function() {
 
             if (node.IsLeaf() && !node.collapsed) {
                 leaf_list[node.order] = bin_id;
-                node.SetColor(this.GetBinColor(bin_id));
             }
         }
     }
@@ -2075,76 +2114,38 @@ Bins.prototype._drawHighlightedItems = function(settings) {
 };
 
 /**
- * Rebuild bin intersections
+ * Recompute which internal nodes belong to a bin from the leaf memberships alone: an
+ * internal node belongs to a bin only if all of its children belong to that same bin.
+ * Leaves (including collapsed nodes) are the source of truth and are kept as they are.
  */
 Bins.prototype.RebuildIntersections = function() {
-    if (!this.allowRedraw) return;
+    if (!this.allowRedraw || !drawer || !drawer.tree || !drawer.tree.root) return;
 
+    const node_bins = new Map();
     for (const bin_id in this.selections) {
-        if (this.selections[bin_id].size === 0) continue;
-
-        const bin_color = this.GetBinColor(bin_id);
-
-        // Remove non-leaf nodes without children in bin
-        this._removeOrphanedNodes(bin_id);
-
-        // Add parent nodes where both children are in bin
-        this._addParentNodes(bin_id, bin_color);
-    }
-};
-
-/**
- * Remove orphaned non-leaf nodes
- * @private
- */
-Bins.prototype._removeOrphanedNodes = function(bin_id) {
-    let removed = true;
-
-    while (removed) {
-        removed = false;
-
-        for (const node of this.selections[bin_id].values()) {
-            if (node === null) return;
-            if (node.IsLeaf()) continue;
-
-            // Check if any child is in this bin
-            let any_child_in_bin = false;
-            let child = node.child;
-
-            while (child && child.sibling) {
-                any_child_in_bin = any_child_in_bin || this.selections[bin_id].has(child);
-                child = child.sibling;
-            }
-
-            if (!any_child_in_bin) {
+        for (const node of Array.from(this.selections[bin_id])) {
+            if (!node) {
                 this.selections[bin_id].delete(node);
-                node.ResetColor();
-                removed = true;
+            } else if (node.IsLeaf()) {
+                node_bins.set(node, bin_id);
+            } else {
+                this.selections[bin_id].delete(node);
             }
         }
     }
-};
 
-/**
- * Add parent nodes where appropriate
- * @private
- */
-Bins.prototype._addParentNodes = function(bin_id, bin_color) {
-    let inserted = true;
+    // IterateChildren is post-order, so children are always resolved before their parent
+    for (const node of drawer.tree.root.IterateChildren()) {
+        if (node.IsLeaf()) continue;
 
-    while (inserted) {
-        inserted = false;
+        let bin_id = node_bins.get(node.child);
+        for (let child = node.child.sibling; child && bin_id !== undefined; child = child.sibling) {
+            if (node_bins.get(child) !== bin_id) bin_id = undefined;
+        }
 
-        for (const node of this.selections[bin_id].values()) {
-            const parent = node.ancestor;
-
-            if (!parent || this.selections[bin_id].has(parent)) continue;
-
-            if (node.sibling && this.selections[bin_id].has(node.sibling)) {
-                this.selections[bin_id].add(parent);
-                parent.SetColor(bin_color);
-                inserted = true;
-            }
+        if (bin_id !== undefined) {
+            node_bins.set(node, bin_id);
+            this.selections[bin_id].add(node);
         }
     }
 };

@@ -156,7 +156,12 @@ def TABULATE(table, header, numalign="right", max_width=0):
 
     from tabulate import tabulate
 
-    tablefmt = "fancy_grid" if sys.stdout.encoding == "UTF-8" else "grid"
+    # `anvio.terminal` imports `anvio`, but we need something from terminal :/ so
+    # here is the sneaky import to avoid that circular dependency (we keep our
+    # fingers crossed that this doesn't explode soon):
+    import anvio.terminal as terminal
+
+    tablefmt = "fancy_grid" if terminal.stdout_supports_unicode() else "grid"
     table = tabulate(table, headers=header, tablefmt=tablefmt, numalign=numalign)
 
     if max_width:
@@ -1059,6 +1064,24 @@ D = {
              'help': "The directory path for your Pfam setup. Anvi'o will try to use the default path "
                      "if you do not specify anything."}
                 ),
+    'amrfinder-data-dir': (
+            ['--amrfinder-data-dir'],
+            {'default': None,
+             'type': str,
+             'metavar': 'DIR_PATH',
+             'help': "This is optional and allows you to specify a directory path for your AMRFinderPlus database. "
+                     "Anvi'o will use the default path if you do not specify anything."}
+                ),
+    'full-amrfinder-report': (
+            ['--full-amrfinder-report'],
+            {'metavar': 'FILE',
+             'default': None,
+             'help': "The contigs database only stores the gene, its classification, and the HMM e-value of each "
+                     "AMRFinderPlus hit. Using this flag, you can generate a table that includes everything "
+                     "AMRFinderPlus knows about each hit, including the percent identity to and the coverage of the "
+                     "closest reference protein, the HMM e-value, the HMM bit score, and the curated HMM cutoff. The "
+                     "protein ids in this file are identical to the gene caller ids in the contigs-db."}
+                ),
     'antismash-dir': (
             ['--antismash-dir'],
             {'default': None,
@@ -1394,6 +1417,13 @@ D = {
                      "can specify one or more sources by separating them from each other with a comma "
                      "character (i.e., '--annotation-sources source_1,source_2,source_3'). The default "
                      "behavior is to return everything"}
+                ),
+    'accession-ids': (
+            ['--accession-ids'],
+            {'metavar': 'ACCESSION_IDS',
+             'help': "One or more accession ids from a functional annotation source to focus on. You can provide them "
+                     "as a comma-separated list (e.g., 'PF00117,PF02786'), or as a path to a file with one accession "
+                     "id per line. Accession ids are matched exactly and they are case-sensitive for science."}
                 ),
     'list-annotation-sources': (
             ['-l', '--list-annotation-sources'],
@@ -1796,6 +1826,31 @@ D = {
                      "exceeds the length of the contig, then the output will include the sequence until the end "
                      "of the contig."}
               ),
+    'skip-computing-gene-level-normalized-coverages': (
+            ['--skip-computing-gene-level-normalized-coverages'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, when anvi'o generates gene-level coverage stats for a genes database, it "
+                     "also computes five normalizations of the non_outlier_mean_coverage values for each "
+                     "gene in each sample, stores them in the genes database, and makes them available "
+                     "as additional views in gene mode: (1) log1p: log(x + 1), which reduces dynamic range; "
+                     "(2) cov_per_million: mean coverage depth per million mapped reads, which accounts for differences "
+                     "in sequencing depth across samples; (3) zscore_raw: per-gene z-score of raw "
+                     "non_outlier_mean_coverage across samples; (4) zscore_log1p: per-gene z-score "
+                     "of log1p-transformed values; (5) zscore_cov_per_million: per-gene z-score of cov_per_million-normalized "
+                     "values. Z-scores show how many standard deviations a gene's coverage in a given "
+                     "sample deviates from that gene's mean coverage across all samples. They are not "
+                     "comparable between genes within the same sample. With transcriptomic data they "
+                     "reflect each gene's own expression pattern; with metagenomic data, genes of a "
+                     "single population tend to follow the population's abundance, so z-scores mostly "
+                     "help spot genes whose coverage deviates from the rest of their genome. Using this "
+                     "flag will prevent anvi'o from generating these data, and these views will not be "
+                     "available. If the genes database already contains them from an earlier run, they "
+                     "will still be shown. Since z-scores are not meaningful with a single sample, anvi'o "
+                     "will force you to include this flag when it creates a new genes database for a profile "
+                     "database that has only one sample (on behalf of anvi'o, we apologize for the "
+                     "inconvenience if/when that happens)."}
+                ),
     'gene-mode': (
             ['--gene-mode'],
             {'default': False,
@@ -2970,16 +3025,17 @@ D = {
              'help': "When declared, the deflines in the resulting FASTA file will contain more information."}
                 ),
     'manual-mode': (
-            ['--manual-mode'],
+            ['--manual-mode', '--manual'],
             {'default': False,
              'action': 'store_true',
-             'help': "Using this flag, you can run the interactive interface in an ad hoc manner using "
-                     "input files you curated instead of standard output files generated by an anvi'o "
-                     "run. In the manual mode you will be asked to provide a profile database. In this "
-                     "mode a profile database is only used to store 'state' of the interactive interface "
-                     "so you can reload your visual settings when you re-analyze the same files again. If "
-                     "the profile database you provide does not exist, anvi'o will create an empty one for "
-                     "you."}
+             'help': "You will rarely need this flag, since anvi'o starts the interactive interface in "
+                     "manual mode automatically when it is given ad hoc input files (such as a tree or a "
+                     "view data file) without a contigs database. But if there are anvi'o databases in "
+                     "your work directory, anvi'o may not be sure whether you want to visualize your files "
+                     "alone or on top of those databases, and ask you to use this flag to be precise. In "
+                     "the manual mode the profile database is only used to store the 'state' of the "
+                     "interface and collections, and if it does not exist, anvi'o will create an empty "
+                     "one for you."}
                 ),
     'hmm-profile-dir': (
             ['-H', '--hmm-profile-dir'],
@@ -3492,14 +3548,6 @@ D = {
             {'default': 'merenlab/anvio',
              'type': str,
              'help': "Source repository to download releases, currently only Github is supported. Enter in 'merenlab/anvio' format."}
-                ),
-    'inseq-stats': (
-            ['--inseq-stats'],
-            {'required': False,
-             'action': 'store_true',
-             'default': False,
-             'help': "Provide if working with INSeq/Tn-Seq genomic data. With this, all gene level "
-                     "coverage stats will be calculated using INSeq/Tn-Seq statistical methods."}
                 ),
     'migrate-safely': (
             ['--migrate-safely'],
@@ -4541,6 +4589,14 @@ D = {
              'metavar': 'INTEGER',
              'help': "Use with --window-length-as-percentage to ensure that percentage-based window lengths never fall below this value."}
     ),
+    'max-window-length': (
+            ['--max-window-length'],
+            {'default': None,
+             'type': int,
+             'metavar': 'INTEGER',
+             'help': "Use with --window-length-as-percentage to ensure that percentage-based window lengths never exceed this value. "
+                     "Set it to 0 if you want percentage-based window lengths to be unbounded (i.e., no maximum)."}
+    ),
     'alpha': (
             ['--alpha'],
             {'default': 0.5,
@@ -4556,6 +4612,18 @@ D = {
              'metavar': 'STRING',
              'help': "Which formula to use when combining S and E into the spread-evenness score (C) that underlies the "
                      "discov score. Options are 'linear' (C = αS + (1-α)E) and 'geometric' (C = S^α * E^(1-α)). The "
+                     "default is '%(default)s'."}
+    ),
+    'discov-min-reads': (
+            ['--discov-min-reads'],
+            {'default': constants.discov_default_min_reads,
+             'type': int,
+             'metavar': 'INTEGER',
+             'help': "The minimum number of reads that must map to a sequence for anvi'o to compute the normalized spread (S) "
+                     "and evenness (E) components of discov. With very few reads, there is not enough information to estimate "
+                     "either of them reliably (for instance, a handful of reads landing randomly in separate windows can "
+                     "look perfectly spread and even). For sequences with fewer mapped reads than this value, S and E are "
+                     "set to 0, so discov collapses to detection squared. Set this to 0 to always compute S and E. The "
                      "default is '%(default)s'."}
     ),
     'gen-window-level-output': (
