@@ -142,7 +142,7 @@
   display: none;
 }
 
-#identity_histograms_picker.disabled {
+#identity_histograms_picker.disabled, #identity_histograms_smooth_picker.disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }

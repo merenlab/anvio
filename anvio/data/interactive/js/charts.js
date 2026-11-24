@@ -425,11 +425,19 @@ function loadAll() {
                         state['show_identity_histograms'] = true;
                     }
 
+                    // smoothed (area) display by default, unless a state says otherwise
+                    if (state['smooth_identity_histograms'] == null) {
+                        state['smooth_identity_histograms'] = true;
+                    }
+
                     $('#toggle_identity_histograms_box').prop("checked", Boolean(state['show_identity_histograms']));
+                    $('#toggle_identity_histograms_smooth_box').prop("checked", Boolean(state['smooth_identity_histograms']));
                 } else {
                     // the option stays in the settings panel, but greyed out with an explanation
                     $('#toggle_identity_histograms_box').prop("checked", false).prop("disabled", true);
                     $('#identity_histograms_picker').addClass('disabled').attr('title', 'Read identity histograms are not available for this profile');
+                    $('#toggle_identity_histograms_smooth_box').prop("checked", false).prop("disabled", true);
+                    $('#identity_histograms_smooth_picker').addClass('disabled').attr('title', 'Read identity histograms are not available for this profile');
                     $('#identity_histograms_unavailable').text(identity_histograms_unavailable_reason + ' ')
                         .append($('<a>').attr({'href': 'https://anvio.org/help/main/programs/anvi-profile/#read-identity-histograms', 'target': '_blank'})
                                         .text('Read the docs'))
@@ -638,6 +646,10 @@ function loadAll() {
                 });
                 $('#toggle_identity_histograms_box').on('change', function() {
                   toggleIdentityHistograms();
+                });
+                $('#toggle_identity_histograms_smooth_box').on('change', function() {
+                  state['smooth_identity_histograms'] = $(this).is(':checked');
+                  if (showIdentityHistograms()) createCharts(state);
                 });
                 $('#toggle_highlight_box').on('change', function() {
                   toggleHighlightBoxes();
@@ -862,6 +874,25 @@ function toggleIdentityHistograms() {
 
 function showIdentityHistograms() {
   return Boolean(state['show_identity_histograms'] && identity_histograms);
+}
+
+function smoothIdentityHistogram(values, sigma) {
+  /* Smooths histogram counts with a Gaussian kernel (sigma is in bins). Weights are renormalized at the
+     edges, so bins near the ends are not pulled down by the missing bins beyond them. With short reads,
+     percent identities can only take a few discrete values (e.g., 99%, 98%, ... for 100 bp reads), which
+     leaves some bins systematically empty and makes bars look jittery, which this evens out. */
+  var radius = Math.ceil(3 * sigma);
+  var smoothed = [];
+  for (var i = 0; i < values.length; i++) {
+    var total = 0, weights = 0;
+    for (var j = Math.max(0, i - radius); j <= Math.min(values.length - 1, i + radius); j++) {
+      var w = Math.exp(-((i - j) * (i - j)) / (2 * sigma * sigma));
+      total += w * values[j];
+      weights += w;
+    }
+    smoothed.push(total / weights);
+  }
+  return smoothed;
 }
 
 function getIdentityHistogramPanelWidth() {
@@ -1703,6 +1734,10 @@ function processState(state_name, state) {
       $('#toggle_identity_histograms_box').prop("checked", Boolean(state['show_identity_histograms']));
     }
 
+    if(state.hasOwnProperty('smooth_identity_histograms')){
+      $('#toggle_identity_histograms_smooth_box').prop("checked", Boolean(state['smooth_identity_histograms']));
+    }
+
     state['state-name'] = current_state_name = state_name;
 
     toastr.success("State '" + current_state_name + "' successfully loaded.");
@@ -1724,6 +1759,7 @@ function serializeSettings() {
     state['show_insertion_size_whiskers'] = $("#toggle_insertion_size_whiskers_box").is(":checked");
     state['min-insertion-length-whisker'] = $("#minInsertionLengthWhiskerInput").val();
     state['show_identity_histograms'] = $("#toggle_identity_histograms_box").is(":checked");
+    state['smooth_identity_histograms'] = $("#toggle_identity_histograms_smooth_box").is(":checked");
     //state['min-indel-coverage'] = $("#minIndelInput").val();
 
     return state;
@@ -2498,7 +2534,12 @@ Chart.prototype.drawIdentityHistogram = function() {
             data.push({'slot': 2 + i, 'count': counts[i], 'label': label, 'below_min': false});
         }
 
-        var max_fraction = d3.max(data, function(d) { return d.count / total_reads; });
+        // when smoothing, bins (but not the '<min' bar) are shown as an area of smoothed fractions
+        var smooth = Boolean(state['smooth_identity_histograms']);
+        var smoothed_fractions = smooth ? smoothIdentityHistogram(counts, 1).map(function(c) { return c / total_reads; }) : null;
+
+        var max_fraction = smooth ? Math.max(num_below_min / total_reads, d3.max(smoothed_fractions))
+                                  : d3.max(data, function(d) { return d.count / total_reads; });
         var y = d3.scale.linear().domain([0, max_fraction]).range([bars_height, 0]).nice();
 
         // reads below the min percent identity used for profiling were never counted, so we shade
@@ -2522,17 +2563,52 @@ Chart.prototype.drawIdentityHistogram = function() {
                 .attr("stroke-dasharray", "2,2");
         }
 
+        if (smooth) {
+            // points are at bin centers, plus the outer edges of the first and last bins so the area
+            // spans the full range
+            var points = smoothed_fractions.map(function(f, i) { return [x(2 + i + 0.5), f]; });
+            points.unshift([x(2), smoothed_fractions[0]]);
+            points.push([x(2 + num_bins), smoothed_fractions[num_bins - 1]]);
+            points.reverse();  // the x axis is reversed, and monotone interpolation needs increasing x values
+
+            var area = d3.svg.area()
+                         .interpolate("monotone")
+                         .x(function(p) { return p[0]; })
+                         .y0(bars_height)
+                         .y1(function(p) { return y(p[1]); });
+
+            var line = d3.svg.line()
+                         .interpolate("monotone")
+                         .x(function(p) { return p[0]; })
+                         .y(function(p) { return y(p[1]); });
+
+            bars.append("path")
+                .datum(points)
+                .attr("class", "identity-histogram-area")
+                .attr("d", area)
+                .attr("fill", color)
+                .attr("fill-opacity", 0.5);
+
+            bars.append("path")
+                .datum(points)
+                .attr("d", line)
+                .attr("fill", "none")
+                .attr("stroke", color)
+                .attr("stroke-width", 1.2);
+        }
+
+        // in smooth mode, bins are still there as invisible bars, so hovering shows the actual counts
         bars.selectAll(".identity-histogram-bar")
             .data(data)
             .enter()
             .append("rect")
             .attr("class", "identity-histogram-bar")
             .attr("x", function(d) { return x(d.slot + 1); })
-            .attr("y", function(d) { return y(d.count / total_reads); })
+            .attr("y", function(d) { return smooth && !d.below_min ? 0 : y(d.count / total_reads); })
             .attr("width", bar_width)
-            .attr("height", function(d) { return bars_height - y(d.count / total_reads); })
+            .attr("height", function(d) { return smooth && !d.below_min ? bars_height : bars_height - y(d.count / total_reads); })
             .attr("fill", function(d) { return d.below_min ? '#888' : color; })
-            .attr("fill-opacity", function(d) { return d.below_min ? 0.6 : 0.7; })
+            .attr("fill-opacity", function(d) { return d.below_min ? 0.6 : (smooth ? 0 : 0.7); })
             .append("title")
             .text(function(d) { return d.label + ": " + format_int(d.count) + " reads (" + format_pct(d.count / total_reads) + ")"; });
 
