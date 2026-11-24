@@ -7,6 +7,10 @@ on:
         description: Name of the test suite (e.g., "Component Tests")
         required: true
         type: string
+      pre-test-commands:
+        description: Multiline shell commands to execute before tests (optional)
+        required: false
+        type: string
       test-commands:
         description: Multiline shell commands to execute
         required: true
@@ -75,6 +79,12 @@ jobs:
       working-directory: ${{ env.SITE_PACKAGES_PATH }}/anvio/data/interactive
       run: |
         npm install
+
+    - name: Pre-test setup
+      if: inputs.pre-test-commands != ''
+      shell: bash -l {0}
+      run: |
+        ${{ inputs.pre-test-commands }}
 
     - name: Run tests
       shell: bash -l {0}
