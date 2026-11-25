@@ -43,7 +43,8 @@ class ContigsDBWorkflow(StructureModule, WorkflowSuperClass):
                            'anvi_import_taxonomy_for_genes', 'anvi_run_scg_taxonomy', 'anvi_run_trna_scan', 'anvi_run_hmms', 'anvi_run_ncbi_cogs',
                            'annotate_contigs_database', 'anvi_get_sequences_for_gene_calls', 'emapper',
                            'anvi_script_run_eggnog_mapper', 'reformat_external_gene_calls_table',
-                           'reformat_external_functions', 'import_external_functions', 'anvi_run_pfams', 'anvi_run_kegg_kofams'])
+                           'reformat_external_functions', 'import_external_functions', 'anvi_run_pfams', 'anvi_run_kegg_kofams',
+                           'anvi_run_amrfinder'])
 
         StructureModule.__init__(self)
 
@@ -109,6 +110,16 @@ class ContigsDBWorkflow(StructureModule, WorkflowSuperClass):
 
         if self.get_param_value_from_config(["anvi_run_ncbi_cogs", "run"]) == True:
             optional_targets.append(os.path.join(self.dirs_dict["CONTIGS_DIR"], "{group}-steps", "anvi_run_ncbi_cogs.done"))
+
+        if self.get_param_value_from_config(["anvi_run_amrfinder", "run"]) == True:
+            full_amrfinder_report = self.get_param_value_from_config(["anvi_run_amrfinder", "--full-amrfinder-report"])
+            if full_amrfinder_report and '{group}' not in full_amrfinder_report:
+                raise ConfigError(f"The path you set for `--full-amrfinder-report` in the rule `anvi_run_amrfinder` "
+                                  f"('{full_amrfinder_report}') does not include the wildcard `{{group}}`, which means "
+                                  f"every contigs database in your workflow would write its report to the same file. "
+                                  f"Please include `{{group}}` in that path (e.g., `{{group}}-AMRFINDER-REPORT.txt`) "
+                                  f"so each one gets its own report.")
+            optional_targets.append(os.path.join(self.dirs_dict["CONTIGS_DIR"], "{group}-steps", "anvi_run_amrfinder.done"))
 
         run_anvi_run_kofams = self.get_param_value_from_config(["anvi_run_kegg_kofams", "run"]) == True
         if run_anvi_run_kofams:
