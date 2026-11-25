@@ -7,6 +7,7 @@ import sys
 from argparse import Namespace
 
 import anvio
+import anvio.db as db
 import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
@@ -41,7 +42,8 @@ def main():
     args = get_args()
     parameters = {'min_cov_for_detection': 0,
                   'outliers_threshold': args.outliers_threshold,
-                  'zeros_are_outliers': args.zeros_are_outliers}
+                  'zeros_are_outliers': args.zeros_are_outliers,
+                  'mode': 'STANDARD'}
 
     try:
         splits_dict = ccollections.GetSplitNamesInBins(args).get_dict()
@@ -63,6 +65,12 @@ def main():
                                   "comes between you and your analyses.")
 
 
+        # normalized coverages are not computed for existing genes databases of single-sample profiles (see
+        # `ProfileSuperclass.init_gene_level_normalized_coverage_stats_dicts`), so we need to know this below
+        profile_db = db.DB(args.profile_db, None, ignore_version=True)
+        profile_db_is_single_sample = len(profile_db.get_meta_value('samples').split(',')) == 1
+        profile_db.disconnect()
+
         run.info('Collection', args.collection_name)
         run.info('Bins to work with', ', '.join(bin_names))
 
@@ -80,17 +88,8 @@ def main():
             if os.path.exists(genes_db_path):
                 genes_db_is_clean = True
                 try:
-                    if args.inseq_stats:
-                        # update the parameters dict to make sure gene-level stats databases are
-                        # recognized distinctly
-                        parameters['mode'] = 'INSEQ'
-                        run.info('Mode', 'INSEQ', mc="red", nl_after=1)
-                    else:
-                        parameters['mode'] = 'STANDARD'
-                        run.info('Mode', 'STANDARD', mc="red", nl_after=1)
-
-                    TableForGeneLevelCoverages(genes_db_path, parameters, mode=parameters['mode'], run=terminal.Run(verbose=False)).check_params()
-                    TableForGeneLevelCoverages(genes_db_path, parameters, mode=parameters['mode'], split_names=splits_dict[bin_name], run=terminal.Run(verbose=False)).check_split_names()
+                    TableForGeneLevelCoverages(genes_db_path, parameters, run=terminal.Run(verbose=False)).check_params()
+                    TableForGeneLevelCoverages(genes_db_path, parameters, split_names=splits_dict[bin_name], run=terminal.Run(verbose=False)).check_split_names()
                 except ConfigError as e:
                     run.info_single("A genes database found, but the parameters or split names associated with that "
                                     "database do not match to what we want now :( Anvi'o will regenerate it. This was "
@@ -99,21 +98,32 @@ def main():
                     os.remove(genes_db_path)
                     genes_db_is_clean = False
 
-                # if the genes db is clean, we don't need ot do anything
+                # if the genes db is clean, we don't need ot do anything, unless it is missing normalized
+                # coverage stats that we are expected to compute by default
                 if genes_db_is_clean:
-                    run.info_single('A clean genes database found, moving on.', nl_after=1)
-                    continue
+                    genes_db = db.DB(genes_db_path, None, ignore_version=True)
+                    normalized_coverages_stored = genes_db.get_meta_value('gene_level_normalized_coverages_stored', return_none_if_not_in_table=True)
+                    genes_db.disconnect()
 
-            # we don't have a genes database, so we will create one.
+                    if normalized_coverages_stored or args.skip_computing_gene_level_normalized_coverages or profile_db_is_single_sample:
+                        run.info_single('A clean genes database found, moving on.', nl_after=1)
+                        continue
+                    else:
+                        run.info_single("A clean genes database found, but it does not have normalized gene-level "
+                                        "coverage stats yet. Anvi'o will compute them now.", nl_after=1)
+
+            # we don't have a genes database, or we have one that is missing normalized coverage stats.
+            # in the latter case the following will read the existing gene-level coverage stats from it
+            # rather than computing them again.
             profile = dbops.ProfileSuperclass(Namespace(profile_db=args.profile_db,
                                                         contigs_db=args.contigs_db,
                                                         collection_name=args.collection_name,
-                                                        bin_id=bin_name,
-                                                        inseq_stats=args.inseq_stats,),
+                                                        bin_id=bin_name),
                                               r=terminal.Run(verbose=False))
 
             profile.init_gene_level_coverage_stats_dicts(outliers_threshold=args.outliers_threshold,
-                                                         zeros_are_outliers=args.zeros_are_outliers)
+                                                         zeros_are_outliers=args.zeros_are_outliers,
+                                                         compute_gene_level_normalized_coverages=not args.skip_computing_gene_level_normalized_coverages)
 
             run.info('Genes database for %s' % bin_name, genes_db_path)
     except ConfigError as e:
@@ -145,12 +155,10 @@ def get_args():
                                         alright.")
     groupC.add_argument(*anvio.A('zeros-are-outliers'), **anvio.K('zeros-are-outliers'))
     groupC.add_argument(*anvio.A('outliers-threshold'), **anvio.K('outliers-threshold'))
+    groupC.add_argument(*anvio.A('skip-computing-gene-level-normalized-coverages'), **anvio.K('skip-computing-gene-level-normalized-coverages'))
 
     groupD = parser.add_argument_group('PARAMETERS OF CONVENIENCE', "They say they save lives.")
     groupD.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
-
-    groupE = parser.add_argument_group('INSEQ DATA', "When analyzing INSeq/Tn-Seq data")
-    groupE.add_argument(*anvio.A('inseq-stats'), **anvio.K('inseq-stats'))
 
     return parser.get_args(parser)
 

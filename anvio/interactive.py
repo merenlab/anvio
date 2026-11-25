@@ -99,6 +99,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.bin_id = A('bin_id')
         self.collection_name = A('collection_name')
         self.gene_mode = A('gene_mode')
+        self.skip_computing_gene_level_normalized_coverages = A('skip_computing_gene_level_normalized_coverages')
         self.inspect_split_name = A('split_name')
         self.just_do_it = A('just_do_it')
         self.skip_hierarchical_clustering = A('skip_hierarchical_clustering')
@@ -124,6 +125,11 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                   "`anvi-script-add-default-collection`, which would add a single collection that describes all contigs "
                                   "in your contigs database (in an ideal world you should use the last one only if you are working with "
                                   "a single genome).")
+
+        if self.skip_computing_gene_level_normalized_coverages and not self.gene_mode:
+            raise ConfigError("The flag `--skip-computing-gene-level-normalized-coverages` only makes sense in gene mode, "
+                              "since normalized gene-level coverages are only computed for genes databases. Please either "
+                              "add `--gene-mode` (along with a collection and a bin) to your command, or remove this flag.")
 
         if self.collection_name and (not self.gene_mode) and (self.bin_id or self.bin_ids_file_path) and self.mode != 'refine':
             raise ConfigError("There is something confusing here. On the one hand you provide a collection name, telling "
@@ -1747,15 +1753,12 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         ProfileSuperclass.__init__(self, self.args)
 
-        self.init_gene_level_coverage_stats_dicts()
+        self.init_gene_level_coverage_stats_dicts(compute_gene_level_normalized_coverages=not self.skip_computing_gene_level_normalized_coverages)
 
         # the gene_level_coverage_stats_dict contains a mixture of data, some of which are not relevant to
         # our purpose of generating views for the interactive interface. here we explicitly list keys that
         # correspond to views we wish to generate:
-        if self.inseq_stats:
-            views_of_interest = ['mean_coverage', 'insertions', 'insertions_normalized', 'mean_disruption', 'below_disruption']
-        else:
-            views_of_interest = ['mean_coverage', 'detection', 'non_outlier_mean_coverage', 'non_outlier_coverage_std']
+        views_of_interest = ['mean_coverage', 'detection', 'non_outlier_mean_coverage', 'non_outlier_coverage_std']
 
         for view in views_of_interest:
             self.views[view] = {
@@ -1840,9 +1843,24 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         self.p_meta['item_orders']['synteny'] = {'type': 'basic', 'data': list(map(str, sorted(all_gene_callers_ids)))}
 
+        # if normalized coverage stats are available, add them as additional views and orderings
+        if len(self.gene_level_normalized_coverage_stats_dict):
+            normalized_views = ['log1p', 'cov_per_million', 'zscore_raw', 'zscore_log1p', 'zscore_cov_per_million']
+
+            for norm_view in normalized_views:
+                self.views[norm_view] = {'table_name': 'genes', 'header': self.p_meta['samples'], 'dict': {}}
+                for gene_callers_id, normalized_coverages in self.gene_level_normalized_coverage_stats_dict.items():
+                    self.views[norm_view]['dict'][str(gene_callers_id)] = {sample_name: normalized_coverages[sample_name][norm_view] for sample_name in normalized_coverages}
+
+                newick_tree_text = clustering.get_newick_tree_data_for_dict(self.views[norm_view]['dict'],
+                                                                            linkage=self.linkage,
+                                                                            distance=self.distance)
+                self.p_meta['available_item_orders'].append(norm_view)
+                self.p_meta['item_orders'][norm_view] = {'type': 'newick', 'data': newick_tree_text}
+
         self.p_meta['default_item_order'] = 'mean_coverage'
         self.default_view = 'mean_coverage'
-        self.title = "Genes in '%s' [mode: %s]" % (self.bin_id, 'IN-Seq/Tn-Seq' if self.inseq_stats else 'Standard')
+        self.title = "Genes in '%s'" % (self.bin_id)
 
         # FIXME: When we are in gene-mode mode, our item names are no longer split names, hence the
         # following dictionaries are useless. Until we find a better way to fill them up with
