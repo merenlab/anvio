@@ -31,4 +31,4 @@ rule gen_external_genome_file:
             f.write("name\tcontigs_db_path\n")
             for name, path in contigs_db_name_path_tuples:
                 name = name.replace(".", "_").replace("-", "_").replace(" ", "_")
-                f.write("%s\t%s\n" % (name, path))
+                f.write("%s\t%s\n" % (name, os.path.abspath(path)))
