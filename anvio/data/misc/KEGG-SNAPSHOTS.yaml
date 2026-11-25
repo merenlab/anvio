@@ -134,6 +134,12 @@ v2025-11-07:
     hash: 68221bd12b30
     modules_db_version: 4
 
+v2026-11-17:
+    url: https://cloud.uol.de/public.php/dav/files/YByQcsNkCc9QmoW
+    archive_name: KEGG_build_2026-11-17_bf90f0dc3ee0.tar.gz
+    hash: bf90f0dc3ee0
+    modules_db_version: 4
+
 # How to add a new KEGG snapshot to this file:
 # 1. download the latest data directly from KEGG by running
 #    `anvi-setup-kegg-data -D --kegg-data-dir ./KEGG -T 5 --include-nt-KOs`

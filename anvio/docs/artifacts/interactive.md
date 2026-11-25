@@ -93,11 +93,20 @@ This is one of the most frequently used tabs in the interface, and there are mul
   - __Order__: change how the items are ordered. Some orders are already computed according to the type of interface you are using, like "Seq. Composition + Diff. Coverage" or "Gene cluster presence absence", or any user provided item order with %(anvi-import-items-order)s.
   - __Data__: also called "Views", it represents the data you wish you visualized in the main figure. In the context of read-recruitment, the options would include "mean coverage" or "detection" for instance.
   - __Item Data Group__: some layers describing your items come as group which you can choose to toggle on/off to either keep them or remove them from the main figure.
-  - __Display__: this is where you can extensively modify the aesthetics of the layers displayed on your figure. You can drag and rearrange the order of these layers. You can also change their color, type (bar, intensity, line), normalization (none, log, square root), height, margin, min and max value.
+  - __Display__: this is where you can extensively modify the aesthetics of the layers displayed on your figure. You can drag and rearrange the order of these layers. You can also change their color, type (bar, intensity, line), normalization (none, log, square root), height, margin, min, max, and center value.
   - __Edit attribute for multiple layers__: if you select multiple layers using the check boxes, you can change values for multiple layers at once. Very useful if you want to change the color/height/whatever of a group of layers. The search box supports multiple search terms separated by semicolons (e.g., `abundance;coverage;detection` will select all layers matching any of those terms), `*` wildcards for pattern matching (e.g., `GC_*` will match `GC_content`, `GC_skew`, etc), or any combination of these (e.g., `hmms;DAY*18`) for flexible layer selection.
 
 {:.notice}
 If you want to remove a layer from the interface, simply change the height to a value of 0.
+
+{:.notice}
+Setting a __center__ value for a layer (e.g., 0 for z-scores or log fold changes) displays its data as diverging around that value: bars and lines extend in both directions from the middle of the layer, and intensity layers use a three-color scale that is white at the center. Values below the center are drawn in the left color, values above in the right color, for bars and lines alike. The left color picker becomes available once a center is set, and if the left color is white or nearly white (which would make values below the center invisible), anvi'o replaces it with a random dark color. The scale is symmetric, and is determined by the value that is furthest from the center. Min and max values are not used for layers with a center value, so their boxes are grayed out while a center is set. Any normalization (log, square root) is applied first, so the center refers to the normalized values, which is also why changing the normalization of a layer resets its center value. Just like normalization, min, and max, center values are specific to each view (e.g., setting a center of 0 for a z-score view will not affect how the same layer is displayed in a coverage view), and they are stored in states as such. Leave the field empty to return to the regular display.
+
+{:.notice}
+Clicking on a __center__ box opens a small window where you can enter a value, clear it, or set it to the __mean__ or __median__ of the layer's values in the current view (computed after the normalization of the layer, if any, is applied). The same window is available for the center box of the 'edit attributes for multiple layers' row, in which case each selected layer gets its own mean or median, while a value you enter applies to all of them.
+
+{:.notice}
+Height, margin, min, max, and center boxes only accept numbers. A box with a value that is not a number turns red, and the interface will not draw until it is fixed.
 
 - #### Layers subsection
 

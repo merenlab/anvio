@@ -99,6 +99,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.bin_id = A('bin_id')
         self.collection_name = A('collection_name')
         self.gene_mode = A('gene_mode')
+        self.skip_computing_gene_level_normalized_coverages = A('skip_computing_gene_level_normalized_coverages')
         self.inspect_split_name = A('split_name')
         self.just_do_it = A('just_do_it')
         self.skip_hierarchical_clustering = A('skip_hierarchical_clustering')
@@ -124,6 +125,11 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                   "`anvi-script-add-default-collection`, which would add a single collection that describes all contigs "
                                   "in your contigs database (in an ideal world you should use the last one only if you are working with "
                                   "a single genome).")
+
+        if self.skip_computing_gene_level_normalized_coverages and not self.gene_mode:
+            raise ConfigError("The flag `--skip-computing-gene-level-normalized-coverages` only makes sense in gene mode, "
+                              "since normalized gene-level coverages are only computed for genes databases. Please either "
+                              "add `--gene-mode` (along with a collection and a bin) to your command, or remove this flag.")
 
         if self.collection_name and (not self.gene_mode) and (self.bin_id or self.bin_ids_file_path) and self.mode != 'refine':
             raise ConfigError("There is something confusing here. On the one hand you provide a collection name, telling "
@@ -220,7 +226,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                           f"It may be the case that you already have used `anvi-display-codon-frequencies` "
                                           f"with a profile-db PATH to generate the file at '{self.profile_db_path}'. In this "
                                           f"case, you should use the program `anvi-interactive` to visualize the data stored "
-                                          f"in that file by running `anvi-interactive -p {self.profile_db_path} --manual`")
+                                          f"in that file by running `anvi-interactive -p {self.profile_db_path}`")
                 else:
                     utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
@@ -262,6 +268,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # if the mode has not been set from within the arguments, we will set something up here:
         if not self.mode:
             if self.manual_mode:
+                # the user explicitly asked for it with the old `--manual` flag, which is no longer
+                # necessary, but we will continue to respect it so old commands don't break.
                 self.mode = 'manual'
             elif self.gene_mode:
                 # collection mode and gene view mode both uses collection_name
@@ -269,6 +277,12 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 self.mode = 'gene'
             elif self.collection_name or self.list_collections:
                 self.mode = 'collection'
+            elif self.is_ad_hoc_display_request():
+                self.mode = 'manual'
+                self.run.warning("Since you did not provide a contigs database, and your profile database is either "
+                                 "not there yet or is not associated with a contigs database, anvi'o will start the "
+                                 "interactive interface in 'manual' mode, and will use the input files you provided "
+                                 "to visualize your data.", header="AD HOC DISPLAY 📊", lc='green')
             elif self.contigs_db_variant == 'trnaseq':
                 self.mode = 'trnaseq'
             else:
@@ -622,6 +636,26 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.progress.end()
 
 
+    def is_ad_hoc_display_request(self):
+        """Returns True if the user is trying to visualize ad hoc data rather than anvi'o databases.
+
+        This is what used to require the `--manual` flag. We consider a request to be an ad hoc one
+        if there is no contigs-db or pan-db, and the profile-db either does not exist yet (in which
+        case `load_manual_mode` will create an empty one), or exists but is not associated with a
+        contigs-db (i.e., it was created by an earlier ad hoc display). Full mode can't run under
+        either of these conditions anyway, so there is no ambiguity here.
+        """
+
+        if self.contigs_db_path or self.pan_db_path or not self.profile_db_path:
+            return False
+
+        if not os.path.exists(self.profile_db_path):
+            return True
+
+        from anvio.dbinfo import DBInfo
+        return not DBInfo(self.profile_db_path).hash
+
+
     def load_manual_mode(self):
         if self.contigs_db_path:
             raise ConfigError("When you want to use the interactive interface in manual mode, you must "
@@ -675,8 +709,16 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
 
         if not self.tree and not self.view_data_path and not tree_order_found_in_db:
-            raise ConfigError("You must be joking Mr. Feynman. No tree file, and no data file, and no tree order in the "
-                              "database? What is it that anvi'o supposed to visualize? :(")
+            if not os.path.exists(self.profile_db_path):
+                raise ConfigError(f"There is no profile database at '{self.profile_db_path}', and you did not provide a "
+                                  f"contigs database either, so anvi'o assumed that you wanted to visualize some ad hoc "
+                                  f"data. But you did not provide a tree file or a data file to visualize :/ If you were "
+                                  f"trying to visualize an existing profile database, please make sure the path is "
+                                  f"correct and provide its contigs database with `-c`. If you were trying to visualize "
+                                  f"your own data, please provide a `--tree` and/or a `--view-data` file.")
+            else:
+                raise ConfigError("You must be joking Mr. Feynman. No tree file, and no data file, and no tree order in the "
+                                  "database? What is it that anvi'o supposed to visualize? :(")
 
         if not self.tree and not tree_order_found_in_db:
             self.run.warning("You haven't declared a tree file and there was no tree order in the database. Anvi'o will "
@@ -1138,7 +1180,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         run.warning("Your profile database to visualize the codon frequency data is ready, and stored in the "
                     "output directory shown below. If you store a different state file, or collections into "
                     "the profil database anvi'o is about to show you, you can always re-visualize the same "
-                    "data by running `anvi-interactive` on that profile database with `--manual` flag.",
+                    "data by running `anvi-interactive` on that profile database.",
                     header="YOUR PROFILE-DB IS READY", lc="cyan")
         run.info("Profile database path", self.profile_db_path, nl_after=1)
 
@@ -1171,7 +1213,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                               f"you must provide a profile database that actually does not exist. Yeah, we know "
                               f"it doesn't make sense, but actually it does, but really very difficult to "
                               f"explain. If you really want to re-display your existing profile database with "
-                              f"functions, you should run `anvi-interactive -p {self.profile_db_path} --manual`. "
+                              f"functions, you should run `anvi-interactive -p {self.profile_db_path}`. "
                               f"Now, that should work like a charm.")
 
         # initialize all functions from wherever.
@@ -1558,9 +1600,16 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
 
     def load_full_mode(self):
+        if not self.contigs_db_path and not self.profile_db_path:
+            raise ConfigError("Anvi'o needs a profile database to make sense of this run. If you are trying to visualize "
+                              "an anvi'o profile database, please provide it with the `-p` parameter (along with its contigs "
+                              "database with `-c`). If you are trying to visualize your own data files, you still need to "
+                              "provide a profile database path with `-p`, but it does not need to exist: anvi'o will create "
+                              "an empty one for you to store your states and collections.")
+
         if not self.contigs_db_path:
-            raise ConfigError("Anvi'o needs the contigs database to make sense of this run (or maybe you "
-                               "should use the `--manual` flag if that's what your intention).")
+            raise ConfigError("Anvi'o needs the contigs database to make sense of this run, since the profile database "
+                               "you provided is associated with one. Please provide it with the `-c` parameter.")
 
         if not self.profile_db_path:
             raise ConfigError("So you want to run anvi'o in full mode, but without a profile database? "
@@ -1704,15 +1753,12 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         ProfileSuperclass.__init__(self, self.args)
 
-        self.init_gene_level_coverage_stats_dicts()
+        self.init_gene_level_coverage_stats_dicts(compute_gene_level_normalized_coverages=not self.skip_computing_gene_level_normalized_coverages)
 
         # the gene_level_coverage_stats_dict contains a mixture of data, some of which are not relevant to
         # our purpose of generating views for the interactive interface. here we explicitly list keys that
         # correspond to views we wish to generate:
-        if self.inseq_stats:
-            views_of_interest = ['mean_coverage', 'insertions', 'insertions_normalized', 'mean_disruption', 'below_disruption']
-        else:
-            views_of_interest = ['mean_coverage', 'detection', 'non_outlier_mean_coverage', 'non_outlier_coverage_std']
+        views_of_interest = ['mean_coverage', 'detection', 'non_outlier_mean_coverage', 'non_outlier_coverage_std']
 
         for view in views_of_interest:
             self.views[view] = {
@@ -1797,9 +1843,24 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         self.p_meta['item_orders']['synteny'] = {'type': 'basic', 'data': list(map(str, sorted(all_gene_callers_ids)))}
 
+        # if normalized coverage stats are available, add them as additional views and orderings
+        if len(self.gene_level_normalized_coverage_stats_dict):
+            normalized_views = ['log1p', 'cov_per_million', 'zscore_raw', 'zscore_log1p', 'zscore_cov_per_million']
+
+            for norm_view in normalized_views:
+                self.views[norm_view] = {'table_name': 'genes', 'header': self.p_meta['samples'], 'dict': {}}
+                for gene_callers_id, normalized_coverages in self.gene_level_normalized_coverage_stats_dict.items():
+                    self.views[norm_view]['dict'][str(gene_callers_id)] = {sample_name: normalized_coverages[sample_name][norm_view] for sample_name in normalized_coverages}
+
+                newick_tree_text = clustering.get_newick_tree_data_for_dict(self.views[norm_view]['dict'],
+                                                                            linkage=self.linkage,
+                                                                            distance=self.distance)
+                self.p_meta['available_item_orders'].append(norm_view)
+                self.p_meta['item_orders'][norm_view] = {'type': 'newick', 'data': newick_tree_text}
+
         self.p_meta['default_item_order'] = 'mean_coverage'
         self.default_view = 'mean_coverage'
-        self.title = "Genes in '%s' [mode: %s]" % (self.bin_id, 'IN-Seq/Tn-Seq' if self.inseq_stats else 'Standard')
+        self.title = "Genes in '%s'" % (self.bin_id)
 
         # FIXME: When we are in gene-mode mode, our item names are no longer split names, hence the
         # following dictionaries are useless. Until we find a better way to fill them up with
@@ -3578,7 +3639,7 @@ class AdHocRunGenerator:
         self.add_state('default')
 
         self.run.info_single("Good news, your data is ready.", nl_before=1, mc='green')
-        self.run.info_single("Please run 'anvi-interactive --manual -p %s --tree %s --view-data %s'" % (self.profile_db_path, tree_path, view_data_path), cut_after=0, nl_after=1, mc='green')
+        self.run.info_single("Please run 'anvi-interactive -p %s --tree %s --view-data %s'" % (self.profile_db_path, tree_path, view_data_path), cut_after=0, nl_after=1, mc='green')
 
 
     def add_state(self, state_name, state_json=None, state_path=None):

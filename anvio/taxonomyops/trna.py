@@ -73,6 +73,12 @@ class TRNATaxonomyContext(AccessionIdToTaxonomy):
         # they better point to actual files.
         self.anticodons = dict([(anticodon, {'db': os.path.join(self.search_databases_dir_path, anticodon)}) for anticodon in self.default_anticodons_for_taxonomy])
 
+        # tRNA-seq reads inosine as G, so seeds of the two bacterial tRNAs which can have A modified
+        # to I at wobble position 34, tRNA-Arg-ACG and tRNA-Leu-AAG, are labeled with the anticodons
+        # in the dict keys, while their genes are labeled with the values. No archaeal tRNA is known
+        # to carry I34.
+        self.a34_anticodon_dict = {'GCG': 'ACG', 'GAG': 'AAG'}
+
         self.accession_to_taxonomy_dict = {}
 
         # set version for ctx, so we know what version of the databases are on disk

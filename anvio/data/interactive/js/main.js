@@ -82,6 +82,8 @@ var description_panel;
 var samples_tree_hover = false;
 var inspection_available = false;
 var sequences_available = false;
+var interface_read_only = false;
+var input_fasta_name = null;
 var load_full_state = false;
 var items_additional_data_groups = {};
 var bbox;
@@ -104,6 +106,14 @@ $(window).resize(function() {
 });
 
 $(document).ready(function() {
+
+    // highlight numerical input boxes in layer tables as soon as they are given a value that is not a number,
+    // so the user doesn't have to wait until the next draw to find out (which will refuse to draw anyway)
+    const numerical_input_selectors = Object.keys(NUMERICAL_LAYER_INPUTS).map(c => '.' + c).join(', ');
+    $('#tbody_layers, #tbody_samples').on('input change', numerical_input_selectors, function() {
+        const class_name = Object.keys(NUMERICAL_LAYER_INPUTS).find(c => $(this).hasClass(c));
+        $(this).toggleClass('is-invalid', !isValidNumericalInputValue($(this).val(), NUMERICAL_LAYER_INPUTS[class_name]['can_be_empty']));
+    });
 
     $.ajaxPrefilter(function(options) {
         if (request_prefix) {
@@ -257,11 +267,20 @@ function initData() {
             }
 
             sequences_available = response.sequences_available;
+            input_fasta_name = response.input_fasta_name;
             if(!response.sequences_available && mode != "collection" && mode != "pan"){
                 toastr.info("No sequence data is available. Some menu items will be disabled.");
             }
 
             functions_available = (response.functions_sources ?? []).length > 0;
+
+            // the option to show sequences in the bin items window only makes sense in manual mode
+            // when the user provided a FASTA file
+            if (mode == 'manual' && sequences_available) {
+                $('#show-sequences-in-bin-items-wrapper').show();
+            }
+
+            interface_read_only = response.read_only ? true : false;
 
             if (response.read_only)
             {
@@ -1521,6 +1540,7 @@ function syncViews() {
             views[current_view][layer_id] = {};
             views[current_view][layer_id]["normalization"] = $(layer).find('.normalization').val();
             views[current_view][layer_id]["min"] = {'value': $(layer).find('.input-min').val(), 'disabled': $(layer).find('.input-min').is(':disabled') };
+            views[current_view][layer_id]["center"] = $(layer).find('.input-center').val();
             views[current_view][layer_id]["max"] = {'value': $(layer).find('.input-max').val(), 'disabled': $(layer).find('.input-max').is(':disabled') };
 
             layers[layer_id]["color"] = $(layer).find('.colorpicker:last').attr('color');
@@ -1666,6 +1686,7 @@ function buildLayersTable(order, settings)
                 '<td class="column-margin"><input class="form-control form-control-sm input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
+                '<td>n/a</td>' +
                 '<td><input type="checkbox" class="layer_selectors"></input></td>' +
                 '</tr>';
 
@@ -1721,6 +1742,7 @@ function buildLayersTable(order, settings)
                 '</td>' +
                 '<td><input class="form-control form-control-sm input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
                 '<td class="column-margin"><input class="form-control form-control-sm input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
+                '<td style="width:55px;">n/a</td>' +
                 '<td style="width:55px;">n/a</td>' +
                 '<td style="width:55px;">n/a</td>' +
                 '<td><input type="checkbox" class="layer_selectors"></input></td>' +
@@ -1819,6 +1841,7 @@ function buildLayersTable(order, settings)
                     '<td class="column-margin"><input class="form-control form-control-sm input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
                     '<td style="width:55px;">n/a</td>' +
                     '<td style="width:55px;">n/a</td>' +
+                    '<td style="width:55px;">n/a</td>' +
                     '<td><input type="checkbox" class="layer_selectors"></input></td>' +
                     '</tr>';
 
@@ -1853,6 +1876,7 @@ function buildLayersTable(order, settings)
                     var max    = view_settings['max']['value'];
                     var min_disabled = view_settings['min']['disabled'];
                     var max_disabled = view_settings['max']['disabled'];
+                    var center = (view_settings['center'] !== undefined) ? view_settings['center'] : '';
                 }
                 else
                 {
@@ -1861,6 +1885,7 @@ function buildLayersTable(order, settings)
                     var max    = getNamedLayerDefaults(layer_name, 'max', 0);
                     var min_disabled = getNamedLayerDefaults(layer_name, 'min_disabled', true);
                     var max_disabled = getNamedLayerDefaults(layer_name, 'max_disabled', true);
+                    var center = '';
                 }
 
                 if (hasLayerSettings)
@@ -1910,6 +1935,7 @@ function buildLayersTable(order, settings)
                     '<td class="column-margin"><input class="form-control form-control-sm input-margin " type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
                     '<td><input class="form-control form-control-sm input-min" type="text" size="4" id="min{id}" value="{min}"{min-disabled}></input></td>' +
                     '<td><input class="form-control form-control-sm input-max" type="text" size="4" id="max{id}" value="{max}"{min-disabled}></input></td>' +
+                    '<td><input class="form-control form-control-sm input-center" type="text" size="4" id="center{id}" placeholder="none" value="{center}"></input></td>' +
                     '<td><input type="checkbox" class="layer_selectors"></input></td>' +
                     '</tr>';
 
@@ -1922,10 +1948,11 @@ function buildLayersTable(order, settings)
                                    .replace(new RegExp('{option-type-([a-z]*)}', 'g'), '')
                                    .replace(new RegExp('{color}', 'g'), color)
                                    .replace(new RegExp('{color-start}', 'g'), color_start)
-                                   .replace(new RegExp('{color-start-hide}', 'g'), (type!='intensity') ? '; visibility: hidden;' : '')
+                                   .replace(new RegExp('{color-start-hide}', 'g'), (type!='intensity' && center==='') ? '; visibility: hidden;' : '')
                                    .replace(new RegExp('{height}', 'g'), height)
                                    .replace(new RegExp('{min}', 'g'), min)
                                    .replace(new RegExp('{max}', 'g'), max)
+                                   .replace(new RegExp('{center}', 'g'), center)
                                    .replace(new RegExp('{min-disabled}', 'g'), (min_disabled) ? ' disabled': '')
                                    .replace(new RegExp('{max-disabled}', 'g'), (max_disabled) ? ' disabled': '')
                                    .replace(new RegExp('{margin}', 'g'), margin)
@@ -1934,6 +1961,36 @@ function buildLayersTable(order, settings)
 
 
                 $('#tbody_layers').append(template);
+
+                $('#tbody_layers .input-center:last').on('input change', function() {
+                    var picker_start = $(this).closest('tr').find('.picker_start');
+                    var layer_type = $(this).closest('tr').find('.type').val();
+                    if ($(this).val() !== '' || layer_type === 'intensity') {
+                        picker_start.css('visibility', 'visible');
+                    } else {
+                        picker_start.css('visibility', 'hidden');
+                    }
+
+                    // values below the center are drawn with the left color, which defaults to white for most
+                    // layers and would make them invisible. if it is (nearly) white, we replace it with a random
+                    // dark color, so the user can see the diverging values right away
+                    if ($(this).val() !== '' && isColorTooLight(picker_start.attr('color'))) {
+                        var new_color = randomColor({luminosity: 'dark'});
+
+                        if (picker_start.data('colpickId')) {
+                            picker_start.colpickSetColor(new_color.replace('#', ''));
+                        }
+
+                        picker_start.attr('color', new_color);
+                        picker_start.css('background-color', new_color);
+                    }
+
+                    // min/max values are not used while there is a center value
+                    toggleMinMaxForCenter($(this).closest('tr'));
+                });
+
+                // a layer may already have a center value (e.g., from a state)
+                toggleMinMaxForCenter($('#tbody_layers tr:last'));
             }
 
         }
@@ -2040,6 +2097,8 @@ function serializeSettings(use_layer_names) {
     state['bin-labels-font-size'] = $('#bin_labels_font_size').val();
     state['autorotate-bin-labels'] = $('#autorotate_bin_labels').is(':checked');
     state['estimate-taxonomy'] = $('#estimate_taxonomy').is(':checked');
+    state['show-sequences-in-bin-items'] = $('#show_sequences_in_bin_items').is(':checked');
+    state['align-sequences-in-bin-items'] = $('#align_sequences_in_bin_items').is(':checked');
     state['use-taxonomy-bin-labels'] = $('#use_taxonomy_bin_labels').is(':checked');
     state['select-contigs-rather-than-splits'] = $('#select_contigs_rather_than_splits').is(':checked');
     state['taxonomy-label-level'] = $('input[name="taxonomy_label_level"]:checked').val();
@@ -2176,8 +2235,42 @@ function serializeSettings(use_layer_names) {
     return state;
 }
 
+function getLayersNormalizationCannotHandle(settings) {
+    // log10(x + 1) is undefined for values of -1 or lower, and sqrt for negative values
+    var layer_names = [];
+
+    for (var i = 0; i < layer_order.length; i++) {
+        var layer_id = layer_order[i];
+
+        if (layer_types[layer_id] != 3 || settings['layers'][layer_id]['visible'] === false)
+            continue;
+
+        var normalization = settings['views'][current_view][layer_id]['normalization'];
+
+        if (normalization != 'log' && normalization != 'sqrt')
+            continue;
+
+        for (var j = 1; j < layerdata.length; j++) {
+            var value = parseFloat(layerdata[j][layer_id]);
+
+            if ((normalization == 'log' && value <= -1) || (normalization == 'sqrt' && value < 0)) {
+                layer_names.push(getPrettyName(getLayerName(layer_id)));
+                break;
+            }
+        }
+    }
+
+    return layer_names;
+}
+
 function drawTree() {
     var defer = $.Deferred();
+
+    // make sure there is nothing but numbers in numerical input boxes before we touch the current figure
+    if (!checkNumericalLayerInputs(['#tbody_layers', '#tbody_samples'])) {
+        return defer.reject().promise();
+    }
+
     var settings = serializeSettings();
     tree_type = settings['tree-type'];
 
@@ -2212,6 +2305,21 @@ function drawTree() {
                         toastr.warning("No layers to draw. Please check at least one item data group.");
                         return;
                     }
+
+                    // warn (but still draw) if a normalization would silently turn values into NaN
+                    let unsuitable_layers = getLayersNormalizationCannotHandle(settings);
+                    if (unsuitable_layers.length > 0) {
+                        let layer_list = unsuitable_layers.slice(0, 5).map(name => `'${name}'`).join(', ');
+                        if (unsuitable_layers.length > 5) {
+                            layer_list += `, and ${unsuitable_layers.length - 5} more`;
+                        }
+                        let one_layer = (unsuitable_layers.length == 1);
+                        toastr.warning(`${one_layer ? 'One layer has' : 'Some layers have'} values that the current normalization can't handle (log: ≤ −1, sqrt: < 0). ` +
+                                       `These values will be missing from your plot. To see them, choose 'none' or a different normalization ` +
+                                       `for ${one_layer ? 'this layer' : 'these layers'}: ${layer_list}.`,
+                                       "Oops, some bars may be missing");
+                    }
+
                     drawer = new Drawer(settings);
                     drawer.draw();
                     refreshCollapsedNodesTable();
@@ -2504,6 +2612,13 @@ function showItemFunctions(bin_id, config, updateOnly = false) {
 
     if (!bin_info.items || bin_info.items.length === 0) {
         toastr.warning('There are no items in this bin yet, so there is nothing to show.', "The anvi'o headquarters has a note");
+        return;
+    }
+
+    // in manual mode we show the bin curation window, which lets the user inspect, select,
+    // remove, or move items (and see their sequences if there is a FASTA file)
+    if (mode == 'manual') {
+        showBinCurationDialog(bin_id);
         return;
     }
 
@@ -3438,6 +3553,14 @@ function processState(state_name, state) {
 
     if (state.hasOwnProperty('estimate-taxonomy')) {
         $('#estimate_taxonomy').prop('checked', state['estimate-taxonomy']).trigger('change');
+    }
+
+    if (state.hasOwnProperty('show-sequences-in-bin-items')) {
+        $('#show_sequences_in_bin_items').prop('checked', state['show-sequences-in-bin-items']).trigger('change');
+    }
+
+    if (state.hasOwnProperty('align-sequences-in-bin-items')) {
+        $('#align_sequences_in_bin_items').prop('checked', state['align-sequences-in-bin-items']);
     }
 
     if (state.hasOwnProperty('taxonomy-label-level')) {

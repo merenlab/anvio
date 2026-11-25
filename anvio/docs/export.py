@@ -365,9 +365,12 @@ class HelpPagesRenderer:
             d += f'''<a href="mailto:{self.authors[author].email}" class="person-social" target="_blank"><i class="fa fa-fw fa-envelope-square"></i>Email</a>'''
 
             if self.authors[author].twitter is not None:
-                d += f'''<a href="http://twitter.com/{self.authors[author].twitter}" class="person-social" target="_blank"><i class="fa fa-fw fa-twitter-square"></i>Twitter</a>'''
+                d += f'''<a href="http://twitter.com/{self.authors[author].twitter}" class="person-social" target="_blank"><i class="fab fa-fw fa-twitter-square"></i>Twitter</a>'''
 
-            d += f'''<a href="http://github.com/{self.authors[author].github}" class="person-social" target="_blank"><i class="fa fa-fw fa-github"></i>Github</a>'''
+            if self.authors[author].bluesky is not None:
+                d += f'''<a href="https://bsky.app/profile/{self.authors[author].bluesky}" class="person-social" target="_blank"><i class="fab fa-fw fa-bluesky"></i>Bluesky</a>'''
+
+            d += f'''<a href="http://github.com/{self.authors[author].github}" class="person-social" target="_blank"><i class="fab fa-fw fa-github"></i>Github</a>'''
 
             d += '''</div></div></div></div>\n\n'''
 

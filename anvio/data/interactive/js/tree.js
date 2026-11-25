@@ -107,22 +107,23 @@ Node.prototype.IterateChildren = function*() {
 }
 
 Node.prototype.SetColor = function(color, width=3) {
-    let line = document.getElementById('line' + this.id);
-    if (line) {
-        line.style['stroke-width'] = width;
-        line.style['stroke'] = color;
-    }
+    for (const element_id of ['line' + this.id, 'arc' + this.id]) {
+        const element = document.getElementById(element_id);
 
-    let arc = document.getElementById('arc' + this.id);
-    if (arc) {
-        arc.style['stroke-width'] = width;
-        arc.style['stroke'] = color;
+        // the whole tree is repainted after every bin change, so only touch elements whose
+        // stroke actually changes
+        if (!element || (element.anvio_stroke === color && element.anvio_stroke_width === width)) continue;
+
+        element.style['stroke-width'] = width;
+        element.style['stroke'] = color;
+        element.anvio_stroke = color;
+        element.anvio_stroke_width = width;
     }
 }
 
 
 Node.prototype.ResetColor = function() {
-    this.SetColor(LINE_COLOR, width=1);
+    this.SetColor(LINE_COLOR, 1);
 }
 
 

@@ -10,8 +10,7 @@ anvi-script-snvs-to-interactive -o OUTPUT_DIR \
 Then, you can open the interactive interface by running
 
 {{ codestart }}
-anvi-interactive --manual-mode \
-                 -p OUTPUT_DIR/profile.db \
+anvi-interactive -p OUTPUT_DIR/profile.db \
                  --tree OUTPUT_DIR/tree.txt \
                  --view-data OUTPUT_DIR/view.txt
 {{ codestop }}
