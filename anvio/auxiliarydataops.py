@@ -26,6 +26,7 @@ DEFAULT_COVERAGE_DTYPE = 'uint16'
 DEFAULT_COVERAGE_MAX_VALUE = np.iinfo(DEFAULT_COVERAGE_DTYPE).max
 TRNASEQ_COVERAGE_DTYPE = 'uint32'
 TRNASEQ_COVERAGE_MAX_VALUE = np.iinfo(TRNASEQ_COVERAGE_DTYPE).max
+IDENTITY_HISTOGRAM_DTYPE = 'uint32'
 
 class AuxiliaryDataForSplitCoverages(object):
     def __init__(self, db_path, db_hash, db_variant='unknown', create_new=False, ignore_hash=False, run=run, progress=progress, quiet=False):
@@ -38,6 +39,7 @@ class AuxiliaryDataForSplitCoverages(object):
         self.run = run
         self.progress = progress
         self.coverage_entries = []
+        self.identity_histogram_entries = []
         self.create_new = create_new
 
         self.coverage_dtype = TRNASEQ_COVERAGE_DTYPE if db_variant == 'trnaseq' else DEFAULT_COVERAGE_DTYPE
@@ -57,6 +59,10 @@ class AuxiliaryDataForSplitCoverages(object):
         self.db.set_meta_value('creation_date', time.time())
 
         self.db.create_table(t.split_coverages_table_name, t.split_coverages_table_structure, t.split_coverages_table_types)
+        self.db.create_table(t.split_identity_histograms_table_name, t.split_identity_histograms_table_structure, t.split_identity_histograms_table_types)
+
+        # becomes True only once a profiler stores identity histograms (see self.set_identity_histogram_meta)
+        self.db.set_meta_value('identity_histograms_stored', False)
 
 
     def check_hash(self):
@@ -82,9 +88,77 @@ class AuxiliaryDataForSplitCoverages(object):
         self.coverage_entries.append((split_name, sample_name, stored_coverage, ))
 
 
+    def append_identity_histogram(self, split_name, sample_name, num_below_min, histogram):
+        """Buffers the read identity histogram of a split in a sample for storage (see self.store)
+
+        Parameters
+        ==========
+        split_name : str
+        sample_name : str
+        num_below_min : int
+            The number of reads with a percent identity below the first bin.
+        histogram : 1D numpy array
+            The number of reads in each bin (see bamops.ReadIdentityBins).
+        """
+
+        if not histogram.any():
+            # just like split coverages (see self.append), a histogram of zeros is stored as an integer,
+            # which here is the number of bins
+            stored_histogram = len(histogram)
+        else:
+            stored_histogram = utils.convert_numpy_array_to_binary_blob(histogram.astype(IDENTITY_HISTOGRAM_DTYPE))
+
+        self.identity_histogram_entries.append((split_name, sample_name, int(num_below_min), stored_histogram, ))
+
+
     def store(self):
         self.db.insert_many(t.split_coverages_table_name, entries=self.coverage_entries)
         self.coverage_entries = []
+
+        self.db.insert_many(t.split_identity_histograms_table_name, entries=self.identity_histogram_entries)
+        self.identity_histogram_entries = []
+
+
+    def set_identity_histogram_meta(self, bins):
+        """Marks identity histograms as stored, and records what is needed to interpret them
+
+        Parameters
+        ==========
+        bins : bamops.ReadIdentityBins
+            The bins the histograms were built with.
+        """
+
+        self.db.set_meta_value('identity_histogram_min', bins.min_identity)
+        self.db.set_meta_value('identity_histogram_bin_width', bins.bin_width)
+        self.db.set_meta_value('identity_histogram_num_bins', bins.num_bins)
+        self.db.set_meta_value('identity_definition', 'gap_excluded')
+        self.db.set_meta_value('identity_histograms_stored', True)
+
+
+    def identity_histograms_stored(self):
+        """Returns True if this database contains read identity histograms"""
+
+        return bool(self.db.get_meta_value('identity_histograms_stored', return_none_if_not_in_table=True))
+
+
+    def get_identity_histogram_bins(self):
+        """Returns the bamops.ReadIdentityBins the stored histograms were built with, or None if there are none"""
+
+        if not self.identity_histograms_stored():
+            return None
+
+        # imported here, because bamops imports dbops, which imports this module
+        from anvio.bamops import ReadIdentityBins
+
+        bins = ReadIdentityBins(min_identity=float(self.db.get_meta_value('identity_histogram_min', try_as_type_int=False)),
+                                bin_width=float(self.db.get_meta_value('identity_histogram_bin_width', try_as_type_int=False)))
+
+        num_bins = self.db.get_meta_value('identity_histogram_num_bins')
+        if bins.num_bins != num_bins:
+            raise AuxiliaryDataError(f"The auxiliary database at '{self.db_path}' says its read identity histograms have "
+                                     f"{num_bins} bins, but its bin parameters give {bins.num_bins} bins :/")
+
+        return bins
 
 
     def get_all_known_split_names(self):
@@ -150,6 +224,40 @@ class AuxiliaryDataForSplitCoverages(object):
         return split_coverage
 
 
+    def get_identity_histograms(self, split_name):
+        """Returns the read identity histograms of a split in all samples
+
+        Returns
+        =======
+        identity_histograms : dict
+            {sample_name: (num_below_min, histogram), ...}, where histogram is a 1D numpy array of read
+            counts per bin (see self.get_identity_histogram_bins). Empty if this database has no
+            identity histograms (see self.identity_histograms_stored).
+        """
+
+        if not self.identity_histograms_stored():
+            return {}
+
+        cursor = self.db._exec(f"SELECT sample_name, num_below_min, histogram FROM {t.split_identity_histograms_table_name} WHERE split_name = ?", (split_name, ))
+        rows = cursor.fetchall()
+
+        if len(rows) == 0:
+            raise AuxiliaryDataError(f"The auxiliary database at '{self.db_path}' does not have read identity histograms "
+                                     f"for the split '{split_name}'.")
+
+        identity_histograms = {}
+        for sample_name, num_below_min, blob in rows:
+            if isinstance(blob, int):
+                # a histogram of zeros, stored as the number of bins (see self.append_identity_histogram)
+                histogram = np.zeros(blob, dtype=IDENTITY_HISTOGRAM_DTYPE)
+            else:
+                histogram = utils.convert_binary_blob_to_numpy_array(blob, dtype=IDENTITY_HISTOGRAM_DTYPE)
+
+            identity_histograms[sample_name] = (num_below_min, histogram)
+
+        return identity_histograms
+
+
     def close(self):
         """Carries out teardown operations for the table
 
@@ -165,5 +273,6 @@ class AuxiliaryDataForSplitCoverages(object):
 
         if self.create_new:
             self.db._exec("""CREATE INDEX IF NOT EXISTS covering_index ON %s(split_name, sample_name)""" % (t.split_coverages_table_name))
+            self.db._exec(f"""CREATE INDEX IF NOT EXISTS identity_histograms_index ON {t.split_identity_histograms_table_name}(split_name, sample_name)""")
 
         self.db.disconnect()

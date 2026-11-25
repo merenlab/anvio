@@ -15,6 +15,8 @@ Of course, we will always suggest that migrating safely is better, because fewer
 ```
 anvi-migrate --migrate-quickly *.db
 ```
+Please note that the auxiliary data file (`AUXILIARY-DATA.db`) that sits next to a profile database is a database of its own, with its own version, so it needs to be migrated as well. Using `*.db` as in the examples above takes care of it.
+
 Please remember that by living life in the fast lane, you forego your safety net. On the rare occasion that the migration does fail, this program will let you know what happened, leave you with a database that has a `.broken` file extension. In this unlikely event, you can always reach out to us.
 
 ### Migrating to a specific version

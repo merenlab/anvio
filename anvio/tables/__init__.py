@@ -289,6 +289,12 @@ split_coverages_table_name       = 'split_coverages'
 split_coverages_table_structure  = ['split_name', 'sample_name', 'coverages']
 split_coverages_table_types      = [    'str'   ,     'str'    ,   'blob'   ]
 
+# histograms of the percent identity of reads to the reference (see bamops.ReadIdentityBins), and the
+# number of reads below the first bin. bin parameters are stored in the self table of the database
+split_identity_histograms_table_name      = 'split_identity_histograms'
+split_identity_histograms_table_structure = ['split_name', 'sample_name', 'num_below_min', 'histogram']
+split_identity_histograms_table_types     = [    'str'   ,     'str'    ,    'integer'   ,   'blob'   ]
+
 
 ####################################################################################################
 #
@@ -515,6 +521,7 @@ table_requires_unique_entry_id = {'self': False,
                                   metabolite_abundances_table_name: False,
                                   collections_info_table_name: False,
                                   split_coverages_table_name: False,
+                                  split_identity_histograms_table_name: False,
                                   genome_info_table_name: False,
                                   gene_info_table_name: False,
                                   genome_gene_function_calls_table_name: True,

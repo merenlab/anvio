@@ -201,6 +201,19 @@ cigar_consumption = numpy.array([
     (1, 1),
 ])
 
+# Codes of the cigarstring operations above that are needed by name, e.g. as indices into the
+# per-operation base counts returned by pysam's `get_cigar_stats`
+CIGAR_M, CIGAR_I, CIGAR_D, CIGAR_S, CIGAR_EQ, CIGAR_X = 0, 1, 2, 4, 7, 8
+CIGAR_OPS_ALIGNED = {CIGAR_M, CIGAR_EQ, CIGAR_X}
+CIGAR_OPS_CONSUMING_READ = {CIGAR_M, CIGAR_I, CIGAR_S, CIGAR_EQ, CIGAR_X}
+
+# Histograms of read percent identities (see `bamops.ReadIdentityBins`): bins start at the minimum and
+# are BIN_WIDTH wide, up to (but excluding) 100%, followed by a final bin for reads that are 100%
+# identical. Reads below the minimum are counted separately. (100 - MIN) must be a multiple of BIN_WIDTH,
+# and bin boundaries should be exact binary floats (e.g., widths of 0.5 or 0.25, but not 0.1)
+READ_IDENTITY_HISTOGRAM_MIN = 80.0
+READ_IDENTITY_HISTOGRAM_BIN_WIDTH = 0.5
+
 # this is to have a common language across multiple modules when genomes (whether they are MAGs,
 # SAGs, or isolate genomes):
 essential_genome_info = ['gc_content', 'num_contigs', 'num_splits', 'total_length', 'num_genes', 'percent_completion', 'percent_redundancy',

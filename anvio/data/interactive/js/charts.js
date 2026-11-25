@@ -67,6 +67,11 @@ var indel_sequence_counter = 0;
 var indel_sequence_preview_length = 60;
 var chart_margin;
 var chart_content_width;
+// read percent identity histograms for the inspected split (null if the profile does not have them).
+// see `get_identity_histograms_for_split` in bottleroutes.py for its structure.
+var identity_histograms = null;
+// why identity histograms are not available (shown in the settings panel when identity_histograms is null)
+var identity_histograms_unavailable_reason = null;
 
 
 function escape_html(value) {
@@ -211,6 +216,9 @@ function loadAll() {
                 layers = response.layers;
                 coverage = response.coverage;
                 sequence = response.sequence;
+                identity_histograms = response.identity_histograms || null;
+                identity_histograms_unavailable_reason = response.identity_histograms_unavailable_reason ||
+                    "Read identity histograms are not available for this page.";
                 variability = [];
                 indels = [];
 
@@ -411,6 +419,31 @@ function loadAll() {
                 $('#toggle_highlight_box').attr("checked", "checked");
                 $('#toggle_nucl_box').attr("checked", "checked");
 
+                if (identity_histograms) {
+                    // histograms are shown by default when they are available, unless a state says otherwise
+                    if (state['show_identity_histograms'] == null) {
+                        state['show_identity_histograms'] = true;
+                    }
+
+                    // smoothed (area) display by default, unless a state says otherwise
+                    if (state['smooth_identity_histograms'] == null) {
+                        state['smooth_identity_histograms'] = true;
+                    }
+
+                    $('#toggle_identity_histograms_box').prop("checked", Boolean(state['show_identity_histograms']));
+                    $('#toggle_identity_histograms_smooth_box').prop("checked", Boolean(state['smooth_identity_histograms']));
+                } else {
+                    // the option stays in the settings panel, but greyed out with an explanation
+                    $('#toggle_identity_histograms_box').prop("checked", false).prop("disabled", true);
+                    $('#identity_histograms_picker').addClass('disabled').attr('title', 'Read identity histograms are not available for this profile');
+                    $('#toggle_identity_histograms_smooth_box').prop("checked", false).prop("disabled", true);
+                    $('#identity_histograms_smooth_picker').addClass('disabled').attr('title', 'Read identity histograms are not available for this profile');
+                    $('#identity_histograms_unavailable').text(identity_histograms_unavailable_reason + ' ')
+                        .append($('<a>').attr({'href': 'https://anvio.org/help/main/programs/anvi-profile/#read-identity-histograms', 'target': '_blank'})
+                                        .text('Read the docs'))
+                        .show();
+                }
+
                 createCharts(state);
                 $('.loading-screen').hide();
 
@@ -610,6 +643,13 @@ function loadAll() {
                               waitingDialog.hide();
                           },
                       });
+                });
+                $('#toggle_identity_histograms_box').on('change', function() {
+                  toggleIdentityHistograms();
+                });
+                $('#toggle_identity_histograms_smooth_box').on('change', function() {
+                  state['smooth_identity_histograms'] = $(this).is(':checked');
+                  if (showIdentityHistograms()) createCharts(state);
                 });
                 $('#toggle_highlight_box').on('change', function() {
                   toggleHighlightBoxes();
@@ -825,6 +865,39 @@ function toggleInsertionSizeWhiskers() {
   console.log("Toggling insertion size whiskers (" + Math.round(Date.now()/1000) + ")");
   state['show_insertion_size_whiskers'] = !state['show_insertion_size_whiskers'];
   createCharts(state);
+}
+
+function toggleIdentityHistograms() {
+  state['show_identity_histograms'] = !state['show_identity_histograms'];
+  createCharts(state);
+}
+
+function showIdentityHistograms() {
+  return Boolean(state['show_identity_histograms'] && identity_histograms);
+}
+
+function smoothIdentityHistogram(values, sigma) {
+  /* Smooths histogram counts with a Gaussian kernel (sigma is in bins). Weights are renormalized at the
+     edges, so bins near the ends are not pulled down by the missing bins beyond them. With short reads,
+     percent identities can only take a few discrete values (e.g., 99%, 98%, ... for 100 bp reads), which
+     leaves some bins systematically empty and makes bars look jittery, which this evens out. */
+  var radius = Math.ceil(3 * sigma);
+  var smoothed = [];
+  for (var i = 0; i < values.length; i++) {
+    var total = 0, weights = 0;
+    for (var j = Math.max(0, i - radius); j <= Math.min(values.length - 1, i + radius); j++) {
+      var w = Math.exp(-((i - j) * (i - j)) / (2 * sigma * sigma));
+      total += w * values[j];
+      weights += w;
+    }
+    smoothed.push(total / weights);
+  }
+  return smoothed;
+}
+
+function getIdentityHistogramPanelWidth() {
+  // the width of the bars area of each histogram, scaled with the screen but kept readable
+  return Math.round(Math.max(110, Math.min(180, VIEWER_WIDTH * 0.1)));
 }
 
 function toggleSNVScalePosition() {
@@ -1657,6 +1730,14 @@ function processState(state_name, state) {
       $('#fixed_ys_box').attr("checked", state['fixed-y-scale']);
     }
 
+    if(state.hasOwnProperty('show_identity_histograms')){
+      $('#toggle_identity_histograms_box').prop("checked", Boolean(state['show_identity_histograms']));
+    }
+
+    if(state.hasOwnProperty('smooth_identity_histograms')){
+      $('#toggle_identity_histograms_smooth_box').prop("checked", Boolean(state['smooth_identity_histograms']));
+    }
+
     state['state-name'] = current_state_name = state_name;
 
     toastr.success("State '" + current_state_name + "' successfully loaded.");
@@ -1677,6 +1758,8 @@ function serializeSettings() {
 
     state['show_insertion_size_whiskers'] = $("#toggle_insertion_size_whiskers_box").is(":checked");
     state['min-insertion-length-whisker'] = $("#minInsertionLengthWhiskerInput").val();
+    state['show_identity_histograms'] = $("#toggle_identity_histograms_box").is(":checked");
+    state['smooth_identity_histograms'] = $("#toggle_identity_histograms_smooth_box").is(":checked");
     //state['min-indel-coverage'] = $("#minIndelInput").val();
 
     return state;
@@ -1730,6 +1813,8 @@ function createCharts(state){
     curr_height = height + 10;
     var contextHeight = 50;
     var contextWidth = width;
+
+    var histogram_panel_width = showIdentityHistograms() ? getIdentityHistogramPanelWidth() : 0;
 
     var svg = d3.select("#chart-container").append("svg")
             .attr("width", width + margin.left + margin.right)
@@ -1805,6 +1890,9 @@ function createCharts(state){
                         variability_d: variability[layer_index][3],
                         competing_nucleotides: competing_nucleotides[layer_index],
                         indels: indels[layer_index],
+                        identity_histogram: showIdentityHistograms() ? {'counts': identity_histograms['histograms'][layer_index],
+                                                                        'num_below_min': identity_histograms['num_below_min'][layer_index]} : null,
+                        identity_histogram_width: histogram_panel_width,
                         gc_content: gc_content_array,
                         'gc_content_window_size': gc_content_window_size,
                         'gc_content_step_size': gc_content_step_size,
@@ -1943,6 +2031,8 @@ function Chart(options){
     this.variability_d = options.variability_d;
     this.competing_nucleotides = options.competing_nucleotides;
     this.indels = options.indels;
+    this.identity_histogram = options.identity_histogram;
+    this.identity_histogram_width = options.identity_histogram_width;
     this.gc_content = options.gc_content;
     this.gc_content_window_size = options.gc_content_window_size;
     this.gc_content_step_size = options.gc_content_step_size;
@@ -2341,7 +2431,232 @@ function Chart(options){
                    .attr("class","sample-title")
                    .attr("transform", "translate(0,20)")
                    .html(left_redirect + this.name + right_redirect);
+
+    if (this.identity_histogram) {
+        this.drawIdentityHistogram();
+    }
 }
+
+
+Chart.prototype.drawIdentityHistogram = function() {
+    /* Draws the read percent identity histogram of this sample as an inset at the bottom-right corner of
+       its coverage plot. Included in SVG exports, but can be turned off, obviously */
+    var counts = this.identity_histogram['counts'];
+    var num_below_min = this.identity_histogram['num_below_min'];
+    var bin_lower_limits = identity_histograms['bin_lower_limits'];
+    var bin_width = identity_histograms['bin_width'];
+    var min_identity = bin_lower_limits[0];
+    var min_percent_identity = identity_histograms['min_percent_identity'];
+    var num_bins = counts.length;
+
+    var total_reads = num_below_min + counts.reduce(function(a, b) { return a + b; }, 0);
+    var format_int = d3.format(",d");
+    var format_pct = function(v) { return (v * 100).toFixed(v < 0.01 ? 2 : 1) + '%'; };
+    var format_identity = function(v) { return (+v.toFixed(2)).toString(); };
+
+    var panel_width = this.identity_histogram_width;
+    var padding = 6;
+    var padding_left = 14;  // room for the '100' label under the left-most bar
+    var y_axis_width = 34;
+    var axis_height = 18;
+    var bars_height = Math.round(this.height * 0.4) + 16;
+    var inset_width = padding_left + panel_width + y_axis_width;
+    var padding_bottom = 4;  // space between the x-axis labels and the bottom edge of the inset
+    var inset_height = padding + bars_height + axis_height + padding_bottom;
+    var inset_offset_right = 15;   // distance from the right edge of the coverage plot
+    var inset_offset_bottom = 15;  // distance from the bottom of the coverage plot
+    var color = this.color;
+
+    var inset = this.samples_svg.append("g")
+                        .attr("class", "identity-histogram " + this.name.toLowerCase())
+                        .style("pointer-events", "all")
+                        .attr("transform", "translate(" + (this.margin.left + this.width - inset_width - inset_offset_right) + "," +
+                                                          (this.margin.top + (this.height * this.id) + (10 * this.id) + this.height - inset_height - inset_offset_bottom) + ")");
+
+    inset.append("rect")
+         .attr("width", inset_width)
+         .attr("height", inset_height)
+         .attr("rx", 3)
+         .attr("fill", "#FFFFFF")
+         .attr("fill-opacity", 0.9)
+         .attr("stroke", "#DDDDDD")
+         .attr("stroke-width", 0.5);
+
+    var container = inset.append("g").attr("transform", "translate(" + padding_left + "," + padding + ")");
+
+    // horizontal positions are in 'slots': slot 0 is for reads below the first bin, slot 1 is an
+    // empty gap, and bins start at slot 2. the axis is reversed, so 100% is on the left and identity
+    // decreases towards the right, where reads below the first bin are. slot s spans [x(s + 1), x(s)].
+    var x = d3.scale.linear().domain([0, num_bins + 2]).range([panel_width, 0]);
+    var slot_of_identity = function(v) { return 2 + (v - min_identity) / bin_width; };
+    var slot_width = x(0) - x(1);
+    var bar_width = Math.max(1, slot_width - (slot_width > 3 ? 1 : 0));
+
+    var bars = container.append("g");
+
+    bars.append("rect")
+        .attr("x", 0)
+        .attr("y", 0)
+        .attr("width", panel_width)
+        .attr("height", bars_height)
+        .attr("fill", "#000")
+        .attr("fill-opacity", 0.03);
+
+    // a faint red background for reads with 95% identity or higher, which is the conventional
+    // species-level cutoff in microbiology. with the reversed axis, it spans from the left edge
+    // to the lower limit of the 95% bin
+    var species_cutoff = 95;
+    if (species_cutoff >= min_identity) {
+        bars.append("rect")
+            .attr("x", 0)
+            .attr("y", 0)
+            .attr("width", x(slot_of_identity(species_cutoff)))
+            .attr("height", bars_height)
+            .attr("fill", "#FF0000")
+            .attr("fill-opacity", 0.08)
+            .append("title")
+            .text("Reads with " + species_cutoff + "% identity or higher (the conventional species-level cutoff)");
+    }
+
+    if (total_reads == 0) {
+        bars.append("text")
+            .attr("x", panel_width / 2)
+            .attr("y", bars_height / 2)
+            .attr("text-anchor", "middle")
+            .attr("font-size", "10px")
+            .attr("fill", "#999")
+            .text("no reads");
+    } else {
+        var data = [{'slot': 0, 'count': num_below_min, 'label': '< ' + format_identity(min_identity) + '%', 'below_min': true}];
+        for (var i = 0; i < num_bins; i++) {
+            var lower = bin_lower_limits[i];
+            var label = (i == num_bins - 1 && lower == 100) ? '100%' : '[' + format_identity(lower) + ', ' + format_identity(lower + bin_width) + ')%';
+            data.push({'slot': 2 + i, 'count': counts[i], 'label': label, 'below_min': false});
+        }
+
+        // when smoothing, bins (but not the '<min' bar) are shown as an area of smoothed fractions
+        var smooth = Boolean(state['smooth_identity_histograms']);
+        var smoothed_fractions = smooth ? smoothIdentityHistogram(counts, 1).map(function(c) { return c / total_reads; }) : null;
+
+        var max_fraction = smooth ? Math.max(num_below_min / total_reads, d3.max(smoothed_fractions))
+                                  : d3.max(data, function(d) { return d.count / total_reads; });
+        var y = d3.scale.linear().domain([0, max_fraction]).range([bars_height, 0]).nice();
+
+        // reads below the min percent identity used for profiling were never counted, so we shade
+        // that part of the histogram to make it clear that its emptiness is not data
+        if (min_percent_identity && min_percent_identity > min_identity) {
+            var cutoff_x = x(slot_of_identity(Math.min(min_percent_identity, 100)));
+            bars.append("rect")
+                .attr("x", cutoff_x)
+                .attr("y", 0)
+                .attr("width", x(0) - cutoff_x)
+                .attr("height", bars_height)
+                .attr("fill", "#999")
+                .attr("fill-opacity", 0.25)
+                .append("title")
+                .text("Reads below the --min-percent-identity of " + min_percent_identity + "% were not profiled");
+
+            bars.append("line")
+                .attr("x1", cutoff_x).attr("x2", cutoff_x)
+                .attr("y1", 0).attr("y2", bars_height)
+                .attr("stroke", "#666")
+                .attr("stroke-dasharray", "2,2");
+        }
+
+        if (smooth) {
+            // points are at bin centers, plus the outer edges of the first and last bins so the area
+            // spans the full range
+            var points = smoothed_fractions.map(function(f, i) { return [x(2 + i + 0.5), f]; });
+            points.unshift([x(2), smoothed_fractions[0]]);
+            points.push([x(2 + num_bins), smoothed_fractions[num_bins - 1]]);
+            points.reverse();  // the x axis is reversed, and monotone interpolation needs increasing x values
+
+            var area = d3.svg.area()
+                         .interpolate("monotone")
+                         .x(function(p) { return p[0]; })
+                         .y0(bars_height)
+                         .y1(function(p) { return y(p[1]); });
+
+            var line = d3.svg.line()
+                         .interpolate("monotone")
+                         .x(function(p) { return p[0]; })
+                         .y(function(p) { return y(p[1]); });
+
+            bars.append("path")
+                .datum(points)
+                .attr("class", "identity-histogram-area")
+                .attr("d", area)
+                .attr("fill", color)
+                .attr("fill-opacity", 0.5);
+
+            bars.append("path")
+                .datum(points)
+                .attr("d", line)
+                .attr("fill", "none")
+                .attr("stroke", color)
+                .attr("stroke-width", 1.2);
+        }
+
+        // in smooth mode, bins are still there as invisible bars, so hovering shows the actual counts
+        bars.selectAll(".identity-histogram-bar")
+            .data(data)
+            .enter()
+            .append("rect")
+            .attr("class", "identity-histogram-bar")
+            .attr("x", function(d) { return x(d.slot + 1); })
+            .attr("y", function(d) { return smooth && !d.below_min ? 0 : y(d.count / total_reads); })
+            .attr("width", bar_width)
+            .attr("height", function(d) { return smooth && !d.below_min ? bars_height : bars_height - y(d.count / total_reads); })
+            .attr("fill", function(d) { return d.below_min ? '#888' : color; })
+            .attr("fill-opacity", function(d) { return d.below_min ? 0.6 : (smooth ? 0 : 0.7); })
+            .append("title")
+            .text(function(d) { return d.label + ": " + format_int(d.count) + " reads (" + format_pct(d.count / total_reads) + ")"; });
+
+        var y_axis = d3.svg.axis().scale(y).orient("right").ticks(3).tickFormat(d3.format(".0%"));
+        bars.append("g")
+            .attr("class", "y axis noselect")
+            .attr("transform", "translate(" + (panel_width + 4) + ",0)")
+            .call(y_axis);
+    }
+
+    // x axis ticks, at the centers of the bins they refer to
+    var range = 100 - min_identity;
+    var step = [0.5, 1, 2, 2.5, 5, 10, 20, 25, 50].find(function(s) { return range / s <= 4; }) || 50;
+    // the first numeric tick is skipped when it would collide with the label of the '<min' bar
+    var tick_values = [0.5];
+    for (var v = Math.ceil(min_identity / step) * step; v <= 100; v += step) {
+        if (Math.abs(x(slot_of_identity(v)) - x(0)) < 28) continue;
+        tick_values.push(slot_of_identity(v) + 0.5);
+    }
+
+    var x_axis = d3.svg.axis()
+                   .scale(x)
+                   .orient("bottom")
+                   .tickValues(tick_values)
+                   .tickSize(3)
+                   .tickFormat(function(t) {
+                       if (t == 0.5) return '<' + format_identity(min_identity);
+                       return format_identity(min_identity + (t - 2.5) * bin_width);
+                   });
+
+    container.append("g")
+             .attr("class", "x axis noselect")
+             .attr("transform", "translate(0," + bars_height + ")")
+             .call(x_axis)
+             .selectAll("text")
+             .attr("font-size", "9px");
+
+    // the number of reads goes to the top-right corner of the bars area, which is almost always empty
+    // since most reads have high identity and those bars are on the left
+    bars.append("text")
+        .attr("class", "noselect")
+        .attr("x", panel_width - 3)
+        .attr("y", 11)
+        .attr("text-anchor", "end")
+        .attr("font-size", "10px")
+        .attr("fill", "#555")
+        .text("n=" + format_int(total_reads));
+};
 
 Chart.prototype.showOnly = function(b){
     this.xScale.domain(b); var xS = this.xScale;

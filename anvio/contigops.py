@@ -101,19 +101,21 @@ class Contig:
         return d[atomic_data_field]
 
 
-    def analyze_coverage(self, bam, min_percent_identity):
+    def analyze_coverage(self, bam, min_percent_identity, compute_identity_histograms=False):
         # each read is assigned to the split that contains most of its aligned bases, so that the number
         # of reads across all splits of a contig adds up to the number of reads of the contig
         splits_in_order = sorted(self.splits, key=lambda split: split.start)
         split_boundaries = [(split.start, split.end) for split in splits_in_order]
 
-        if min_percent_identity is None:
+        # a cutoff of 0 means no filtering, just like in the SNV and SCV passes (see Auxiliary)
+        if not min_percent_identity:
             self.coverage.run(
                 bam,
                 self,
                 read_iterator='fetch',
                 max_coverage=anvio.auxiliarydataops.DEFAULT_COVERAGE_MAX_VALUE,
                 split_boundaries=split_boundaries,
+                compute_identity_histograms=compute_identity_histograms,
             )
         else:
             self.coverage.run(
@@ -122,11 +124,23 @@ class Contig:
                 read_iterator='fetch_filter_and_trim',
                 max_coverage=anvio.auxiliarydataops.DEFAULT_COVERAGE_MAX_VALUE,
                 split_boundaries=split_boundaries,
+                compute_identity_histograms=compute_identity_histograms,
                 percent_id_cutoff=min_percent_identity,
             )
 
         num_reads_per_split = dict(zip([split.name for split in splits_in_order], self.coverage.num_reads_per_split))
         self.coverage.num_reads_per_split = None
+
+        # each split gets its own row of the identity histograms (as a single-row array, just like what
+        # Coverage.run would produce for the split alone)
+        identity_rows_per_split = {}
+        if compute_identity_histograms:
+            for i, split in enumerate(splits_in_order):
+                identity_rows_per_split[split.name] = (self.coverage.identity_histograms[i:i + 1],
+                                                       self.coverage.num_below_min_identity[i:i + 1])
+
+            self.coverage.identity_histograms = None
+            self.coverage.num_below_min_identity = None
 
         if len(self.splits) == 1:
             # Coverage.process_c is a potentially expensive operation (taking up ~90% of the time of
@@ -147,6 +161,8 @@ class Contig:
             split.coverage.is_outlier_in_parent = self.coverage.is_outlier
             split.coverage.mean_Q2Q3 = self.coverage.mean_Q2Q3
             split.coverage.num_reads = self.coverage.num_reads
+            if compute_identity_histograms:
+                split.coverage.identity_histograms, split.coverage.num_below_min_identity = identity_rows_per_split[split.name]
             return
 
         for split in self.splits:
@@ -154,6 +170,8 @@ class Contig:
             split.coverage.c = self.coverage.c[split.start:split.end]
             split.coverage.is_outlier_in_parent = self.coverage.is_outlier[split.start:split.end]
             split.coverage.num_reads = num_reads_per_split[split.name]
+            if compute_identity_histograms:
+                split.coverage.identity_histograms, split.coverage.num_below_min_identity = identity_rows_per_split[split.name]
             split.coverage.process_c(split.coverage.c)
 
 

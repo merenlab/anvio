@@ -545,6 +545,8 @@ class BottleApplication(Bottle):
                  'previous_contig_name': None,
                  'next_contig_name': None,
                  'genes': [],
+                 'identity_histograms': None,
+                 'identity_histograms_unavailable_reason': None,
                  'outlier_SNVs_shown': not self.args.hide_outlier_SNVs,
                  'state': {}}
 
@@ -588,6 +590,8 @@ class BottleApplication(Bottle):
             data['coverage'] = [coverages[layer].tolist() for layer in layers]
         except:
             data['coverage'] = [[0] * self.interactive.splits_basic_info[split_name]['length']]
+
+        data['identity_histograms'], data['identity_histograms_unavailable_reason'] = self.get_identity_histograms_for_split(split_name, layers, db_variant)
 
         data['sequence'] = self.interactive.split_sequences[split_name]['sequence']
 
@@ -666,6 +670,50 @@ class BottleApplication(Bottle):
             data['genes'].append(p)
 
         return json.dumps(data)
+
+
+    def get_identity_histograms_for_split(self, split_name, layers, db_variant):
+        """Returns the read identity histograms of a split for the inspect page, and why they are unavailable if they are
+
+        Returns
+        =======
+        (identity_histograms, unavailable_reason) : tuple
+            If histograms are available, `identity_histograms` is a dict with the lower limits of the bins, the
+            min percent identity used during profiling (if any), and for each layer (in the same order as
+            `layers`) the histogram counts and the number of reads below the first bin, and `unavailable_reason`
+            is None. Otherwise, `identity_histograms` is None, and `unavailable_reason` is a message for the user
+            that explains why the histograms are not available.
+        """
+
+        try:
+            auxiliary_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.interactive.auxiliary_data_path,
+                                                                           self.interactive.p_meta['contigs_db_hash'],
+                                                                           db_variant=db_variant)
+        except Exception as e:
+            return None, (f"Anvi'o could not open the auxiliary database of this profile, which is where read identity "
+                          f"histograms are stored :/ Here is the error: {e}")
+
+        try:
+            bins = auxiliary_db.get_identity_histogram_bins()
+            if not bins:
+                return None, ("You don't have read identity histograms in your auxiliary database. Please read the "
+                              "online documentation on how to get them in.")
+
+            histograms = auxiliary_db.get_identity_histograms(split_name)
+        except Exception as e:
+            run.warning(f"Anvi'o could not read the read identity histograms for the split '{split_name}', so they will "
+                        f"not be available on the inspect page. Here is the error: {e}")
+            return None, f"Anvi'o could not read the read identity histograms for this split. Here is the error: {e}"
+        finally:
+            auxiliary_db.close()
+
+        min_percent_identity = self.interactive.p_meta.get('min_percent_identity')
+
+        return {'bin_lower_limits': bins.get_bin_lower_limits(),
+                'bin_width': bins.bin_width,
+                'min_percent_identity': min_percent_identity if isinstance(min_percent_identity, float) else None,
+                'histograms': [histograms[layer][1].tolist() for layer in layers],
+                'num_below_min': [int(histograms[layer][0]) for layer in layers]}, None
 
 
     def get_gene_info(self, gene_callers_id):

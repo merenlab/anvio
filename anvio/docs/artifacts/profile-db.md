@@ -83,3 +83,36 @@ Note also that each alignment in the BAM file is counted, so (for paired-end dat
 A read can span the boundary between two (or more) splits of a contig. To avoid counting such reads more than once, each read is assigned to exactly one split, so that the read counts of all splits of a contig add up to the read count of the contig. A read is assigned to the split that contains most of its aligned bases, that is, the bases in the aligned blocks of the read (the same ones that contribute to coverage, so soft-clipped bases, insertions, and deletions are not considered). If two splits contain the same number of aligned bases, the read is assigned to the earlier one. Reads that do not cross a split boundary (the vast majority) are simply assigned to the split in which they start. See `Coverage.get_split_index_for_read()` in `anvio/bamops.py` for the implementation.
 
 As a result of this assignment, a split can have nonzero coverage but zero reads assigned to it, if every read that covers it has most of its aligned bases in neighboring splits. This can happen, for example, with long reads that span multiple splits. These are the splits that are listed in the `zero_read_splits` table.
+
+### Read identity histograms
+
+The auxiliary data file (`AUXILIARY-DATA.db`) that accompanies a profile database stores both per-split, per-sample coverage arrays and a per-split, per-sample histogram of the percent identity of reads aligned to the reference. The latter are computed during %(anvi-profile)s and stored in the auxiliary database's `split_identity_histograms` table:
+
+* `split_name` and `sample_name`: the split and the sample the histogram describes
+* `num_below_min`: the number of reads with a percent identity below the first bin
+* `histogram`: the number of reads in each bin, as a gzip-compressed numpy array of `uint32` values. When no reads map (or pass the fetch filters, if applicable), then this cell contains an integer (the number of bins) rather than a compressed histogram of all zeros.
+
+Use `AuxiliaryDataForSplitCoverages.get_identity_histograms(split_name)` in `anvio/auxiliarydataops.py` to read them, which returns `{sample_name: (num_below_min, histogram)}` and takes care of the decompression.
+
+**Histogram Bins**
+
+The bins are defined by `bamops.ReadIdentityBins`. With the default parameters (`READ_IDENTITY_HISTOGRAM_MIN` and `READ_IDENTITY_HISTOGRAM_BIN_WIDTH` in `anvio/constants.py`), there are 41 bins: [80, 80.5), [80.5, 81), ..., [99.5, 100), and [100, 100.5), which only holds reads with 100%% identity. The parameters used for the histograms in an auxiliary data file are stored in its self table (`identity_histogram_min`, `identity_histogram_bin_width`, and `identity_histogram_num_bins`). Code that reads the histograms should get the bin parameters from the self table with `get_identity_histogram_bins()` rather than from the constants, which may change in the future.
+
+**Percent identity**
+
+The percent identity of a read is calculated by `bamops.get_read_identity_counts()` as the percentage of its aligned positions (CIGAR operations `M`, `=`, and `X`) where the read base matches the reference base. This is recorded as `identity_definition = gap_excluded` in the self table. The number of mismatches comes from the `=`/`X` operations if the CIGAR string uses them instead of `M`, otherwise from the `MD` tag, otherwise from the `NM` tag minus the number of inserted and deleted bases. When the `MD` tag lists an ambiguous reference base that is identical to the read base (e.g., `N` vs `N`), it is counted as a match. Reads for which none of these sources are available (or whose tags are inconsistent with their CIGAR string) have no percent identity, and are not counted in the histograms.
+
+**Which reads are counted**
+
+The histograms include the same reads as the number of reads tables described above, and reads are assigned to splits the same way. So for each sample, the sum of all histograms and `num_below_min` values is the `total_reads_kept` of the sample, minus any reads without a percent identity (which should be rare, since BAM files that lack the necessary tags do not get histograms at all; see below).
+
+**When are they stored**
+
+To compute percent identities, anvi'o needs reads that carry the right information in the BAM file. Thus, before profiling, %(anvi-profile)s will sample 10,000 reads from a given %(bam)s file to perform a sanity check. If at least 99%% of them carry the information needed for these calculations, it will calculate the identity histograms. Otherwise anvi'o will skip these calculations, and you will get a warning.
+
+The self table key `identity_histograms_stored` tells you whether the table contains data. It is `False` (0) for profiles that don't pass the aforementioned sanity check, as well as for blank profiles and for auxiliary data files migrated from version 2.
+
+%(anvi-merge)s merges the histograms of single profiles only if all of them have histograms (if only some of them do, it warns the user and merges the profiles without histograms), and it refuses to merge profiles whose histograms were built with different bins. %(anvi-split)s copies the histograms of the splits in each bin.
+
+**Caveats**
+- Only auxiliary databases v3 and above will include the read percent identity histograms
