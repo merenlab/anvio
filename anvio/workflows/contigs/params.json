@@ -97,6 +97,14 @@
         "import_external_functions": {
             "threads": {"type": "int", "default": 1}
         },
+        "anvi_run_amrfinder": {
+            "threads":                   {"type": "int",  "default": 5},
+            "run":                       {"type": "bool", "default": false},
+            "--amrfinder-data-dir":      {"type": "str",  "default": null},
+            "--full-amrfinder-report":   {"type": "str",  "default": null},
+            "--skip-amrfinder-e-values": {"type": "bool", "default": null},
+            "--just-do-it":              {"type": "bool", "default": null}
+        },
         "anvi_run_pfams": {
             "threads":        {"type": "int",  "default": 1},
             "run":            {"type": "bool", "default": false},
