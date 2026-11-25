@@ -1468,15 +1468,13 @@ D = {
              'help': "Request an additional output matrix that reports the per-population copy number (PPCN) of each "
                      "function in every metagenomic assembly (or long-read metagenome). anvi'o divides the frequency of a "
                      "function in a given assembly by the number of populations estimated to be present in that same "
-                     "assembly (estimated from single-copy core genes: the mode of the number of hits to the single-copy "
-                     "core genes of each domain, summed across Bacteria, Archaea, and Eukarya, just like "
-                     "`anvi-display-contigs-stats` does). This normalization is useful for metagenomic assemblies, where the "
-                     "raw frequency of a function scales with the number of populations in the assembly and is therefore "
-                     "not comparable across samples of vastly different community sizes. It follows the per-population copy "
-                     "number normalization introduced by Iva Veseli (Veseli et al. 2025). It requires that your "
-                     "contigs databases have been annotated with single-copy core genes via `anvi-run-hmms`, and it works "
-                     "only with an external-genomes file (`-e`), since population normalization is meaningful for whole "
-                     "metagenomic assemblies but not for individual genomes or a genomes storage database."}
+                     "assembly estimated from single-copy core gene. By default, anvi'o uses the 'mode' of the number "
+                     "of hits to the single-copy core genes of each domain, but other statistics to work with the SCG hits "
+                     "are available (see `--num-population-estimator-statistic` and online help for this program). For "
+                     "instance 'median' may be more accurate when comparing normalized frequencies of functions across "
+                     "extremely complex metagenomic assemblies. This normalization logic follows the per-population copy "
+                     "number (PPCN) normalization introduced by Veseli et al. (2025), and it requires that your "
+                     "contigs-db files to have been annotated with single-copy core genes via `anvi-run-hmms`."}
                 ),
     'num-population-estimator-statistic': (
             ['--num-population-estimator-statistic'],
