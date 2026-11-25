@@ -1465,16 +1465,18 @@ D = {
             ['--add-per-population-copy-number'],
             {'default': False,
              'action': 'store_true',
-             'help': "Request an additional output matrix that reports the per-population copy number (PPCN) of each "
-                     "function in every metagenomic assembly (or long-read metagenome). anvi'o divides the frequency of a "
-                     "function in a given assembly by the number of populations estimated to be present in that same "
-                     "assembly estimated from single-copy core gene. By default, anvi'o uses the 'mode' of the number "
-                     "of hits to the single-copy core genes of each domain, but other statistics to work with the SCG hits "
-                     "are available (see `--num-population-estimator-statistic` and online help for this program). For "
-                     "instance 'median' may be more accurate when comparing normalized frequencies of functions across "
-                     "extremely complex metagenomic assemblies. This normalization logic follows the per-population copy "
-                     "number (PPCN) normalization introduced by Veseli et al. (2025), and it requires that your "
-                     "contigs-db files to have been annotated with single-copy core genes via `anvi-run-hmms`."}
+             # Please NOTE: The following help text describes only the normalization method that is common to every
+             # program that accepts this flag. But each program will have to prepend its own sentence(s) on WHAT is
+             # being normalized :) Please see the examples in `anvi-gen-function-matrix` and `anvi-estimate-metabolism`.
+             # This strategy enables the common description of the method to live in only one place.
+             'help': "anvi'o divides that number by the number of populations estimated to be present in the same "
+                     "assembly from single-copy core genes (SCGs). By default, anvi'o uses the 'mode' of the number "
+                     "of hits to the SCGs of each domain, but other statistics to work with the SCG hits are available "
+                     "(see `--num-population-estimator-statistic` and the online help for this program). For instance "
+                     "'median' may be more accurate when comparing normalized values across extremely complex "
+                     "metagenomic assemblies. This normalization logic follows the per-population copy number (PPCN) "
+                     "normalization introduced by Veseli et al. (2025), and it requires that your contigs-db files "
+                     "have been annotated with single-copy core genes via `anvi-run-hmms`."}
                 ),
     'num-population-estimator-statistic': (
             ['--num-population-estimator-statistic'],
