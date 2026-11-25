@@ -116,6 +116,7 @@ class AuthorDocumentation:
     avatar: str
     web: str | None = None
     twitter: str | None = None
+    bluesky: str | None = None
 
 
 @dataclass(frozen=True, kw_only=True)
