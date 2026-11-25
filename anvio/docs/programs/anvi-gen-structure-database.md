@@ -11,6 +11,8 @@ If any good hits are found, they are selected as templates, and their structures
 
 The output of this program is a %(structure-db)s, which contains all of the modelled structures. Currently, the primary use of the %(structure-db)s is for interactive exploration with %(anvi-display-structure)s. You can also export your structures into external .pdb files with %(anvi-export-structures)s, or incorporate structural information in the %(variability-profile-txt)s with %(anvi-gen-variability-profile)s.
 
+Instead of a %(contigs-db)s, you can predict structures for the genes of a pangenome by providing a %(pan-db)s (`--pan-db`) and its %(genomes-storage-db)s (`-g`). With the flag `--select-representative`, anvi'o predicts a single structure per gene cluster, for its representative gene. Such a %(structure-db)s is the input of %(anvi-pan-genome-structure)s, which merges gene clusters with similar structures into protein structure-informed gene clusters.
+
 ### Basic standard run
 
 Here is a simple run:
