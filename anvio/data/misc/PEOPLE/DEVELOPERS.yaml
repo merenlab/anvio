@@ -861,13 +861,18 @@
   git_records:
     - isa.wilkie@googlemail.com
   linkedin: isabella-wilkie-337a62162
+  bluesky: iwilkie.bsky.social
   orcid: 0000-0003-1072-8081
   bio: "Marine microbiologist specialising in bioinformatic analysis of microbial populations, with experience developing pipelines for metagenomics, structural annotation, and population-level variation."
   affiliations:
     - title: Postdoctoral Scientist
+      inst: Institute for Chemistry and Biology of the Marine Environment, University of Oldenburg
+      inst_link: https://uol.de/icbm
+      current: true
+    - title: Postdoctoral Scientist
       inst: Max-Planck-Institute for Marine Microbiology
       inst_link: https://www.mpi-bremen.de/
-      current: true
+      current: false
 
 - github: l-gallucci
   name: Luigi Gallucci
