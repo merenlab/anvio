@@ -725,7 +725,6 @@ class Coverage:
         # filled in by self.run only if compute_identity_histograms=True (see self.run for details)
         self.identity_histograms = None
         self.num_below_min_identity = None
-        self.num_reads_without_identity = 0
 
         self.read_iterator_dict = {
             'fetch': self._fetch_iterator,
@@ -798,9 +797,9 @@ class Coverage:
               not provided, and one column per bin of READ_IDENTITY_BINS.
             - self.num_below_min_identity: a numpy array with one value per row of
               self.identity_histograms, the number of reads with an identity below the first bin.
-            - self.num_reads_without_identity: the number of reads whose identity could not be
-              determined (these are in neither of the above). This can only be non-zero with the 'fetch'
-              read iterator, since 'fetch_filter_and_trim' excludes such reads.
+
+            Reads whose identity could not be determined are in neither of these. This can only happen
+            with the 'fetch' read iterator, since 'fetch_filter_and_trim' excludes such reads.
 
             Only the 'fetch' and 'fetch_filter_and_trim' read iterators are supported, since
             'fetch_and_trim' does not keep the identity of reads before trimming them.
@@ -846,7 +845,6 @@ class Coverage:
             num_histogram_rows = len(split_boundaries) if split_boundaries else 1
             identity_histograms = [[0] * READ_IDENTITY_BINS.num_bins for _ in range(num_histogram_rows)]
             num_below_min_identity = [0] * num_histogram_rows
-            num_reads_without_identity = 0
 
             # reads from 'fetch' are pysam reads, and reads from 'fetch_filter_and_trim' are trimmed
             # Read objects that carry the percent identity of the untrimmed read
@@ -876,9 +874,7 @@ class Coverage:
                 else:
                     percent_identity = get_read_percent_identity(read)
 
-                if percent_identity is None:
-                    num_reads_without_identity += 1
-                else:
+                if percent_identity is not None:
                     bin_index = READ_IDENTITY_BINS.get_bin_index(percent_identity)
                     if bin_index < 0:
                         num_below_min_identity[split_index] += 1
@@ -894,13 +890,6 @@ class Coverage:
             # convert the lists to arrays
             self.identity_histograms = np.array(identity_histograms, dtype=np.uint32)
             self.num_below_min_identity = np.array(num_below_min_identity, dtype=np.uint32)
-            self.num_reads_without_identity = num_reads_without_identity
-
-            num_reads_accounted_for = int(self.identity_histograms.sum()) + int(self.num_below_min_identity.sum()) + num_reads_without_identity
-            if num_reads_accounted_for != self.num_reads:
-                raise ConfigError(f"Coverage.run :: Something is wrong with the read identity histograms of '{contig_name}': "
-                                  f"they account for {num_reads_accounted_for} reads, but {self.num_reads} reads were "
-                                  f"processed. This is probably a bug, and the anvi'o developers would like to hear about it.")
 
         if max_coverage is not None:
             if np.max(self.c) > max_coverage:

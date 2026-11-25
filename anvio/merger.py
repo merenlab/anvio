@@ -344,15 +344,13 @@ class MultipleRuns:
         Histograms are merged only if every single profile has them, and they were all built with the same
         bins. If some profiles have them and others don't, they are not merged (with a warning), since a
         merged profile with histograms for only some of its samples would be misleading. Sets
-        self.merge_identity_histograms, and if it is True, self.identity_histogram_bins and
-        self.num_reads_without_identity (the per-sample counts of all single profiles combined).
+        self.merge_identity_histograms, and if it is True, self.identity_histogram_bins.
         """
 
         AUX = lambda x: os.path.join(os.path.dirname(x), 'AUXILIARY-DATA.db')
 
         self.merge_identity_histograms = False
         self.identity_histogram_bins = None
-        self.num_reads_without_identity = {}
 
         aux_paths = {p: AUX(p) for p in self.profile_dbs_info_dict}
         if not all(filesnpaths.is_file_exists(aux_path, dont_raise=True) for aux_path in aux_paths.values()):
@@ -372,7 +370,6 @@ class MultipleRuns:
 
             aux = auxiliarydataops.AuxiliaryDataForSplitCoverages(aux_path, None, ignore_hash=True)
             bins_per_profile[profile_db_path] = aux.get_identity_histogram_bins()
-            self.num_reads_without_identity.update(aux.get_num_reads_without_identity())
             aux.close()
 
         if not bins_per_profile:
@@ -385,7 +382,6 @@ class MultipleRuns:
                              f"profile can only include these histograms if all of its samples have them, the merged "
                              f"profile will not include any. If you need them, please re-profile the samples that lack "
                              f"them with a BAM file that includes MD or NM tags.", header="NO READ IDENTITY HISTOGRAMS")
-            self.num_reads_without_identity = {}
             return
 
         bin_parameters = set((b.min_identity, b.bin_width, b.num_bins) for b in bins_per_profile.values())
@@ -482,11 +478,10 @@ class MultipleRuns:
 
         self._concatenate_single_profile_tables(merged_split_coverage_values.db, table_name='split_coverages', is_auxiliary=True)
 
-        # see check_identity_histograms_in_auxiliary_dbs for when this is True. the meta values are set once,
-        # with the per-sample counts of all single profiles, since setting them replaces any existing values
+        # see check_identity_histograms_in_auxiliary_dbs for when this is True
         if self.merge_identity_histograms:
             self._concatenate_single_profile_tables(merged_split_coverage_values.db, table_name=tables.split_identity_histograms_table_name, is_auxiliary=True)
-            merged_split_coverage_values.set_identity_histogram_meta(self.identity_histogram_bins, self.num_reads_without_identity)
+            merged_split_coverage_values.set_identity_histogram_meta(self.identity_histogram_bins)
 
         self.run.info('Read identity histograms merged', self.merge_identity_histograms)
 

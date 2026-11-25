@@ -636,10 +636,7 @@ class BinSplitter(summarizer.Bin, XSplitter):
         bin_profile_auxiliary.store()
 
         if identity_histograms_stored:
-            # the number of reads without identity information is a per-sample total for the entire parent
-            # profile (it is not known per split), so it is copied as is rather than subset to this bin
-            bin_profile_auxiliary.set_identity_histogram_meta(parent_profile_auxiliary.get_identity_histogram_bins(),
-                                                              parent_profile_auxiliary.get_num_reads_without_identity())
+            bin_profile_auxiliary.set_identity_histogram_meta(parent_profile_auxiliary.get_identity_histogram_bins())
 
         bin_profile_auxiliary.close()
         parent_profile_auxiliary.close()

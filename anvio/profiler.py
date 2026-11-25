@@ -1162,10 +1162,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         # read identity histograms are computed whenever the reads in the BAM file carry the information
         # needed to determine their percent identity (see `init_profile_from_BAM`), and stored in the
-        # auxiliary database. the two numbers below are the reads that are not in any histogram
+        # auxiliary database. the number below is the reads with an identity below the first bin
         self.compute_identity_histograms = False
         self.num_reads_below_min_identity = 0
-        self.num_reads_without_identity = 0
 
         # this will be set to `True` by `_apply_bam_index_prefilter` if there is not a single read
         # in the BAM file that is mapped to any of the contigs we are interested in. in that case
@@ -1699,7 +1698,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if not self.compute_identity_histograms:
             return
 
-        self.auxiliary_db.set_identity_histogram_meta(bamops.READ_IDENTITY_BINS, {self.sample_id: self.num_reads_without_identity})
+        self.auxiliary_db.set_identity_histogram_meta(bamops.READ_IDENTITY_BINS)
 
 
     def report_identity_histograms(self):
@@ -1709,7 +1708,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         self.run.info("Read identity histograms stored", True)
         self.run.info(f"Num reads below {bamops.READ_IDENTITY_BINS.min_identity}% identity", self.num_reads_below_min_identity)
-        self.run.info("Num reads without identity information", self.num_reads_without_identity)
 
 
     def store_zero_coverage_for_skipped_splits(self):
@@ -2698,7 +2696,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.total_reads_kept += contig.coverage.num_reads
 
             if self.compute_identity_histograms:
-                self.num_reads_without_identity += contig.coverage.num_reads_without_identity
                 self.num_reads_below_min_identity += sum(int(split.coverage.num_below_min_identity[0]) for split in contig.splits)
 
         self.generate_variable_nts_table()

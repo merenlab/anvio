@@ -132,8 +132,7 @@ class Contig:
         self.coverage.num_reads_per_split = None
 
         # each split gets its own row of the identity histograms (as a single-row array, just like what
-        # Coverage.run would produce for the split alone). the contig keeps only the number of reads
-        # without identity, which is not resolved per split
+        # Coverage.run would produce for the split alone)
         identity_rows_per_split = {}
         if compute_identity_histograms:
             for i, split in enumerate(splits_in_order):
