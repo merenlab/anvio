@@ -190,6 +190,41 @@ rule anvi_run_ncbi_cogs:
                                      {params.search_with} >> {log} 2>&1""")
 
 
+rule anvi_run_amrfinder:
+    """Annotate contigs with NCBI AMRFinderPlus hits (antimicrobial resistance, stress response, and virulence genes)."""
+    input:
+        contigs=ancient(M.get_contigs_db_path()),
+    output:
+        done=touch(
+            os.path.join(
+                dirs_dict["CONTIGS_DIR"], "{group}-steps", "anvi_run_amrfinder.done"
+            )
+        ),
+    log:
+        rule_log("anvi_run_amrfinder", "{group}-anvi_run_amrfinder"),
+    threads: M.T("anvi_run_amrfinder")
+    resources:
+        nodes=M.T("anvi_run_amrfinder"),
+    params:
+        # anvi-run-amrfinder params. See anvi-run-amrfinder help menu for more info.
+        amrfinder_data_dir=M.get_rule_param("anvi_run_amrfinder", "--amrfinder-data-dir"),
+        # the full report is written per group, so we resolve the `{group}` wildcard here
+        full_amrfinder_report=lambda wildcards: M.get_rule_param(
+            "anvi_run_amrfinder", "--full-amrfinder-report"
+        ).replace("{group}", wildcards.group),
+        skip_amrfinder_e_values=M.get_rule_param(
+            "anvi_run_amrfinder", "--skip-amrfinder-e-values"
+        ),
+        just_do_it=M.get_rule_param("anvi_run_amrfinder", "--just-do-it"),
+    shell:
+        w.r("""anvi-run-amrfinder -c {input.contigs} \
+                                     -T {threads} \
+                                     {params.amrfinder_data_dir} \
+                                     {params.full_amrfinder_report} \
+                                     {params.skip_amrfinder_e_values} \
+                                     {params.just_do_it} >> {log} 2>&1""")
+
+
 rule anvi_run_scg_taxonomy:
     """Estimate taxonomy from single-copy core genes in the contigs database."""
     input:
