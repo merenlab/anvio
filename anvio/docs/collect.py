@@ -239,6 +239,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
             authors[name] = AuthorDocumentation(
                 github=entry['github'], name=entry['name'], email=entry['email'],
                 avatar=destination, web=entry.get('web'), twitter=entry.get('twitter'),
+                bluesky=entry.get('bluesky'),
             )
             asset_sources[destination] = source
         metadata = BuildMetadata(
