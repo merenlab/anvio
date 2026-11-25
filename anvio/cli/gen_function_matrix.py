@@ -88,7 +88,13 @@ def get_args():
                                 "assemblies as a whole. To account for this, anvi'o can "
                                 "report an additional matrix in which function frequencies are normalized by the estimated number "
                                 "of populations in each metagenome (an approach known as per-population copy number, or PPCN).")
-    groupD.add_argument(*anvio.A('add-per-population-copy-number'), **anvio.K('add-per-population-copy-number'))
+    groupD.add_argument(*anvio.A('add-per-population-copy-number'), **anvio.K('add-per-population-copy-number',
+                                    {'help': "Request an additional output matrix that reports the per-population copy number (PPCN) "
+                                             "of each function in every metagenomic assembly (or long-read metagenome) listed in your "
+                                             "external-genomes file (this flag works only with `-e`), where the frequency of each "
+                                             "function in an assembly is normalized by the size of its community: "
+                                             + anvio.D['add-per-population-copy-number'][1]['help']}))
+    groupD.add_argument(*anvio.A('num-population-estimator-statistic'), **anvio.K('num-population-estimator-statistic'))
 
     groupE = parser.add_argument_group('GENES', "By default, anvi'o will look for genes in contigs databases that are identified "
                                 "by `pyrodigal-gv`. But if you have generated your contigs databse with external gene calls, or have "
