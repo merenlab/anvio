@@ -383,6 +383,23 @@ In multi-mode, the population estimates for every %(external-genomes)s entry are
 
 This flag also works for matrix output (see below).
 
+*Choosing how the number of populations is estimated*
+
+By default, anvi'o estimates the number of populations in each domain as the *mode* of the number of hits to that domain's single-copy core genes. You can ask for the *median* instead:
+
+{{ codestart }}
+anvi-estimate-metabolism -e %(external-genomes)s \
+                         --add-per-population-copy-number \
+                         --num-population-estimator-statistic median
+{{ codestop }}
+
+In complex metagenomes, the hit counts can spread widely across single-copy core genes, and the most frequent value may be decided by a tie among a few genes that sits far from the center of the distribution. When that happens, the mode *can* inflate or deflate every PPCN value in that sample by the same factor, which may look like a biological signal when you compare samples. The median is less sensitive to that, but at the expense of being more responsive to systematic shifts across many genes. So what does this mean? Well, if a large fraction of single-copy core genes are missed or fragmented in an assembly, the median will drift with them, whereas the mode can still hold on to a clear peak if there is one. Neither statistic is always the better one.
+
+{:.warning}
+The salient point here is the following (which is often the case with serious 'omics analyses): even the best way to summarize single-copy core gene counts into an estimated number of populations will depend on your very specific dataset. Thus, it is a good idea to compute PPCN values with both `mode` and `median`, and make sure that the signal you are focusing on does not depend on this choice (or that you can explain the differences). One way to look into this is to follow modules that you expect to be present about once per genome in nearly all populations (for instance, core modules of central carbon metabolism or nucleotide biosynthesis). Their PPCN should stay roughly constant across your samples. If they all rise or fall together in one sample, and the two statistics disagree for that sample, the population estimate may deserve a closer look. The %(anvi-gen-function-matrix)s program accepts the same parameter, and there ribosomal proteins offer a similar check.
+
+The statistic used is reported in the terminal output along with the population estimates.
+
 **Including coverage and detection in long-format output**
 
 If you have a profile database associated with your contigs database and you would like to include coverage and detection data in the metabolism estimation output files, you can use the `--add-coverage` flag. You will need to provide the profile database as well, of course. :)
