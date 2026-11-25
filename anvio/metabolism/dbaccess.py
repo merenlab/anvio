@@ -64,10 +64,27 @@ class KeggEstimatorArgs():
         self.exclude_zero_modules = False if A('include_zeros') else True
         self.only_complete = True if A('only_complete') else False
         self.add_coverage = True if A('add_coverage') else False
+
+        # flags related to PPCN, and number of populations estimator statistic
         self.add_per_population_copy_number = True if A('add_per_population_copy_number') else False
-        # not a CLI flag: this is set on the args object by KeggMetabolismEstimatorMulti to pass a pre-computed
-        # population estimate down to a single estimator, so it doesn't need to recompute it (see get_num_populations_for_contigs_db())
-        self.num_populations = A('num_populations')
+        self.num_population_estimator_statistic_explicitly_set = A('num_population_estimator_statistic') is not None
+        self.num_population_estimator_statistic = A('num_population_estimator_statistic') or hmmops.NUM_POPULATIONS_ESTIMATORS[0]
+        self.num_populations = A('num_populations') # <--- this one is not a CLI flag, but set on the args object by
+                                                    #      KeggMetabolismEstimatorMulti to pass a pre-computed population
+                                                    # estimate down to a single estimator, so it doesn't need to
+                                                    # recompute it (see get_num_populations_for_contigs_db())
+
+        # quick sanity checks for parameter consistency before we continue with the
+        # rest of the initialization from the args object
+        if self.num_population_estimator_statistic_explicitly_set and not self.add_per_population_copy_number:
+            raise ConfigError("The parameter `--num-population-estimator-statistic` only makes sense together with "
+                              "`--add-per-population-copy-number`, since it controls how the number of populations "
+                              "used for that normalization is estimated.")
+        if self.num_population_estimator_statistic not in hmmops.NUM_POPULATIONS_ESTIMATORS:
+            raise ConfigError(f"'{self.num_population_estimator_statistic}' is not a statistic anvi'o knows how to use to "
+                              f"estimate the number of populations. Please choose one of these: "
+                              f"{', '.join(hmmops.NUM_POPULATIONS_ESTIMATORS)}.")
+
         self.exclude_kos_no_threshold = False if A('include_kos_not_in_kofam') else True
         self.include_stray_kos = True if A('include_nt_KOs') or A('include_stray_kos') else False # quick fix for backward compatability
         self.include_nt_KOs = True if A('include_nt_KOs') or A('include_stray_kos') else False # quick fix for backward compatability
@@ -606,9 +623,10 @@ class KeggDataLoader(KeggContext):
         """Estimates the number of populations in a (meta)genome from its single-copy core genes.
 
         This value is used to normalize module copy number into per-population copy number (PPCN) when
-        `--add-per-population-copy-number` is requested. The estimate is the mode of the number of hits to the
-        single-copy core genes of each domain, summed across Bacteria, Archaea, and Eukarya, just like
-        `anvi-display-contigs-stats` does (see `hmmops.NumGenomesEstimator`). Requires that the contigs database
+        `--add-per-population-copy-number` is requested. The estimate is the mode (or, with
+        `--num-population-estimator-statistic median`, the median) of the number of hits to the single-copy core
+        genes of each domain, summed across Bacteria, Archaea, and Eukarya, just like `anvi-display-contigs-stats`
+        does (see `hmmops.NumGenomesEstimator`). Requires that the contigs database
         has been annotated with single-copy core genes via `anvi-run-hmms`.
 
         PARAMETERS
@@ -635,7 +653,8 @@ class KeggDataLoader(KeggContext):
         # NumGenomesEstimator (via SequencesForHMMHits) opens its own progress tracker internally, so we always
         # hand it a quiet one here to avoid conflicting with a progress tracker the caller may already have open.
         # `run`, on the other hand, is caller-controlled (see docstring above).
-        num_genomes_estimator = hmmops.NumGenomesEstimator(contigs_db_path, run=run, progress=progress_quiet)
+        num_genomes_estimator = hmmops.NumGenomesEstimator(contigs_db_path, run=run, progress=progress_quiet,
+                                                            estimator=self.num_population_estimator_statistic)
 
         if not len(num_genomes_estimator.estimates_dict):
             raise ConfigError(f"You requested per-population copy number normalization with "
