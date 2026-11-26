@@ -4033,8 +4033,11 @@ class PanGraphSuperclass(PanSuperclass):
         identical across subsets, which is precisely what makes successive subsets
         comparable to one another.
 
-        Node types ARE recomputed, since 'core' has to mean "in every genome the user
-        is currently looking at" or the colors on the screen tell a lie.
+        Node types ARE recomputed, in the region scope the db was built with (see
+        `recompute_node_types`): under 'component', genomes switched off do not count,
+        so 'core' means "in every active genome of the component"; under 'global',
+        rearrangement and duplication types stay as built and only the remaining nodes
+        are re-typed against the active genomes.
         """
         if genomes_of_interest:
             missing = sorted(set(genomes_of_interest) - set(self.genome_names))
