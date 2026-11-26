@@ -93,10 +93,10 @@ def get_args():
                     "fusion, a fuse that would union two components in a way that puts more than this many contigs from "
                     "any one genome into a single component is rejected (reason: `max-contigs-per-component`); the "
                     "excess contig is not dropped -- it stays free to join a different component that lacks its genome, "
-                    "or ends up as its own component. -1 (default) disables the cap and preserves the classic behavior "
-                    "where a genome may thread arbitrarily many of its contigs through one component. Set it to 1 for "
-                    "CLOSED/complete genomes, where each genome should contribute at most one contig per replicon and a "
-                    "second one signals a spurious cross-replicon fusion. WARNING: a low cap will fragment DRAFT "
+                    "or ends up as its own component. 1 (default) is meant for CLOSED/complete genomes, where each genome "
+                    "should contribute at most one contig per replicon and a second one signals a spurious cross-replicon "
+                    "fusion. -1 disables the cap and preserves the classic behavior where a genome may thread arbitrarily "
+                    "many of its contigs through one component. WARNING: a low cap will fragment DRAFT "
                     "genomes, since a fragmented chromosome legitimately spreads many contigs across the same "
                     "component; each excess contig then becomes a separate component. Must be -1 or a positive integer.")
     groupD.add_argument('--no-remerge', default=False, action='store_true',
@@ -107,19 +107,22 @@ def get_args():
                     "original splits intact.")
     groupD.add_argument('--remerge-max-length', default=10, type=int,
                     help = "Asymmetry cap (in DAG edges) for remerge candidates. For each candidate pair, "
-                    "the remerge pass measures shortest-path distances from BOTH the lowest common ancestor "
-                    "(LCA) and the lowest common descendant (LCD), where they exist, to each of the two "
-                    "nodes. If either |dist_a - dist_b| exceeds this value the merge is rejected. This "
-                    "blocks topologically lopsided merges where one candidate sits much deeper/shallower "
-                    "than the other relative to the shared ancestor or descendant. -1 disables the check."
-                    "When only one of LCA or LCD exists, only that side's check applies; pairs with "
-                    "neither (extremely rare on a connected DAG) are not rejected by this guard.")
+                    "the remerge pass measures the shortest-path distance from the pair's lowest common "
+                    "ancestor (LCA) to each of the two nodes, and rejects the merge if |dist_a - dist_b| "
+                    "exceeds this value. Only when the pair has no common ancestor does it measure the "
+                    "distances to the lowest common descendant (LCD) instead. This blocks topologically "
+                    "lopsided merges where one candidate sits much deeper/shallower than the other relative "
+                    "to the shared ancestor (or descendant). -1 disables the check. Pairs with neither an "
+                    "LCA nor an LCD (extremely rare on a connected DAG) are not rejected by this guard.")
     groupD.add_argument('--no-include-non-coding-genes', default=False, action='store_true',
                     help = "Drop non-coding gene calls (rRNA, tRNA, etc.) from the graph. By default (no flag), "
-                    "non-coding gene calls are kept as singleton super-nodes typed `rna`. Non-coding genes are "
-                    "detected via each genome's CONTIGS.db `call_type` column (anything that is not CODING). "
-                    "They have no DIAMOND hits (DIAMOND runs on translated proteins) and therefore never merge "
-                    "across genomes -- each non-coding gene becomes its own node. Pass this flag to drop them "
+                    "non-coding gene calls are kept as nodes typed `rna`. Non-coding genes are detected via "
+                    "each genome's CONTIGS.db `call_type` column (anything that is not CODING). They belong to "
+                    "no gene cluster (the pangenome is built on translated proteins), so the engine never fuses "
+                    "them and each one starts out as its own node. The remerge step (see `--no-remerge`) then "
+                    "treats them all as members of one gene cluster and merges RNA nodes of different genomes "
+                    "that sit at the same place in the graph, so a conserved tRNA or rRNA locus ends up as a "
+                    "single node shared by the genomes that carry it. Pass this flag to drop them "
                     "before component-id and layout computation; flanking gene-order edges are re-stitched so "
                     "line continuity is preserved.")
 

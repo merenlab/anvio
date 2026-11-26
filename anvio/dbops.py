@@ -17,6 +17,7 @@ import threading
 import itertools
 import scipy.signal
 import pandas as pd
+import networkx as nx
 
 # multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
 # using the multiprocessing module directly results in a pickling error in Python 3.10 which
@@ -3784,10 +3785,29 @@ class PanGraphSuperclass(PanSuperclass):
             gene_cluster_grouping_threshold, groupcompress)
         self.pangenome_graph.cut_edges(max_edge_length_filter)
 
-        region_sides_df, _ = self.pangenome_graph.summarize_all_components(
-            scope=self.p_meta.get('region_scope', 'global'))
-        self._refresh_region_caches(region_sides_df)
+        self._summarize_regions()
         self.p_meta['component'] = str(component)
+
+
+    def _summarize_regions(self):
+        """Summarize the regions of the graph in memory and refresh the region caches.
+
+        For the full genome set, the backbone flags stored in the db are honoured (they
+        keep the backbone of dbs migrated from older versions as it was). For a genome
+        subset they describe the wrong genome set, so core-ness follows the genomes in the
+        graph, and the fresh flags replace the stored ones in the node layers, which is
+        what the interface draws the backbone track from.
+        """
+        subset = len(self.genomes_of_interest) < len(self.genome_names)
+
+        region_sides_df, backbone_by_node = self.pangenome_graph.summarize_all_components(
+            scope=self.p_meta.get('region_scope', 'global'), use_stored_backbone=not subset)
+
+        if subset:
+            for node, data in self.pangenome_graph.graph.nodes(data=True):
+                data['layer'] = {**data['layer'], 'backbone': backbone_by_node.get(node, 0)}
+
+        self._refresh_region_caches(region_sides_df)
 
 
     def rerun_state(self, gene_cluster_grouping_threshold, groupcompress, max_edge_length_filter, component='CP_0001', genomes=None):
@@ -3836,9 +3856,7 @@ class PanGraphSuperclass(PanSuperclass):
             gene_cluster_grouping_threshold, groupcompress)
         self.pangenome_graph.cut_edges(max_edge_length_filter)
 
-        region_sides_df, _ = self.pangenome_graph.summarize_all_components(
-            scope=self.p_meta.get('region_scope', 'global'))
-        self._refresh_region_caches(region_sides_df)
+        self._summarize_regions()
 
         # dropping genomes can dissolve a component entirely, so the one the
         # interface last asked for may no longer be there to show
@@ -4054,7 +4072,9 @@ class PanGraphSuperclass(PanSuperclass):
                 'gene_calls': gene_calls,
                 'synteny': synteny,
                 'type': data['node_type'],
-                'layer': self.items_additional_data_dict[node],
+                # a copy, since a subset writes its own backbone flags into it (see
+                # `_summarize_regions`) and the full set must find the stored ones again
+                'layer': dict(self.items_additional_data_dict[node]),
                 'position': (0, 0),
                 'group': '',
                 'alignment': json.loads(data['alignment_summary']),
@@ -4087,28 +4107,66 @@ class PanGraphSuperclass(PanSuperclass):
             self.pangenome_graph.graph.add_edge(data['source'], data['target'], **graph_data)
 
         if subsetting:
+            self.split_disconnected_components()
             self.recompute_node_types()
 
         self.pangenome_graph_initialized = True
 
 
+    def split_disconnected_components(self):
+        """Give every piece of a component that a genome subset cut apart a component id of its own.
+
+        Dropping genomes drops the nodes and edges only they had, which can leave a stored
+        component in several disconnected pieces. Those pieces would share one id, while the
+        layout puts every weakly connected piece into its own coordinate frame, so the
+        interface would draw them on top of each other, and their regions would be summarized
+        as one. The largest piece keeps the stored id, so the component the user is looking at
+        keeps its name; the others get new ids after the largest id in the db, so they can't
+        be mistaken for a stored component that is merely absent from this subset.
+        """
+        G = self.pangenome_graph.graph
+
+        nodes_by_component = {}
+        for node, data in G.nodes(data=True):
+            nodes_by_component.setdefault(data['component_id'], []).append(node)
+
+        next_id = max(int(str(data['component_id']).split('_')[1]) for data in self.nodes.values()) + 1
+
+        for component_id in sorted(nodes_by_component, key=lambda cid: int(cid.split('_')[1])):
+            pieces = list(nx.weakly_connected_components(G.subgraph(nodes_by_component[component_id])))
+            if len(pieces) < 2:
+                continue
+
+            pieces.sort(key=lambda piece: (-len(piece), min(piece)))
+            for piece in pieces[1:]:
+                new_component_id = f"CP_{next_id:04d}"
+                next_id += 1
+                for node in piece:
+                    G.nodes[node]['component_id'] = new_component_id
+
+
     def recompute_node_types(self):
-        """Re-type the nodes of the current (subset) graph so that 'core' means "in
-        every genome currently in the graph" rather than "in every genome in the db".
+        """Re-type the nodes of the current (subset) graph in the scope the db was built
+        with (`region_scope`), so that inactive genomes don't count towards core.
 
-        The engine's `compute_node_types` does the actual work, in its 'global' scope,
-        with both of its inputs synthesized from the graph in memory:
+        The engine's `compute_node_types` does the work, with `line_to_genome` as a
+        self-map over the active genomes (it only provides the genome denominator, and
+        node membership is read from the mirrored `gene_calls` dicts):
 
-          * `line_to_genome` only matters here for the genome denominator, and the
-            function reads node membership from the mirrored `gene_calls` dicts, so a
-            self-map over the active genomes is all it needs.
+          * 'component': the nodes are typed per component exactly as during the build,
+            with the active genomes in each component as the denominator. A node that is
+            core in its component stays core when some of the component's genomes are
+            switched off, and a node that only lacked the switched-off genomes becomes
+            core. Split status and multi-copy are counted from the surviving SynGCs of
+            the component, just as the build counts them from the component's SynGCs.
 
-          * `gene_clusters` only feeds `parent_multi_copy`. Deriving it from the
-            surviving nodes means a genome counts as multi-copy for a parent GC when it
-            appears in two or more surviving super-nodes of that GC -- the same rule the
-            'component' scope uses. It differs from the pan-db-backed version, which
-            also counts genes that never made it into the graph, but this way the answer
-            follows from what the user is actually looking at.
+          * 'global': a parent GC with SynGCs in several places (typically in several
+            components) is a rearrangement or duplication, and a genome subset must not
+            change that, even when the subset removes every other SynGC of the GC. So
+            those nodes keep the type they were built with, and only the unsplit nodes
+            are re-typed as core / accessory / singleton against the active genomes.
+            (A subset only removes SynGCs, so no unsplit node can become split, and the
+            multi-copy input is never read for the nodes that are re-typed.)
 
         `rna` is a call-type override the engine applied from the CONTIGS.dbs, which is
         not something a genome subset can change, so those nodes keep their type.
@@ -4116,15 +4174,22 @@ class PanGraphSuperclass(PanSuperclass):
         from anvio.pangenomegraphengine import compute_node_types
 
         G = self.pangenome_graph.graph
+        scope = self.p_meta.get('region_scope', 'global')
 
         rna_nodes = {n for n, d in G.nodes(data=True) if d.get('type') == 'rna'}
 
         line_to_genome = {g: g for g in self.genomes_of_interest}
-        gene_clusters = {(genome, gene_call): n.rsplit('_', 1)[0]
-                         for n, d in G.nodes(data=True)
-                         for genome, gene_call in d['gene_calls'].items()}
 
-        compute_node_types(G, line_to_genome, gene_clusters, scope='global')
+        if scope == 'component':
+            # the 'component' scope counts multi-copy from the graph itself and never reads `gene_clusters`
+            compute_node_types(G, line_to_genome, gene_clusters={}, scope='component')
+        else:
+            compute_node_types(G, line_to_genome, gene_clusters={}, scope='global')
+
+            for n, d in G.nodes(data=True):
+                built_type = self.nodes[n]['node_type']
+                if built_type in ('rearrangement', 'duplication'):
+                    d['type'] = built_type
 
         for n in rna_nodes:
             G.nodes[n]['type'] = 'rna'
@@ -4166,27 +4231,29 @@ class PanGraphSuperclass(PanSuperclass):
         return self.gene_callers_id_to_synteny_gene_cluster
 
     def init_synteny_gene_clusters(self):
+        # every node is a synteny gene cluster here, including the `GC_UNKNOWN` ones (genes the
+        # pan-db has no gene cluster for, such as tRNAs and rRNAs), so they show up in summaries,
+        # collections, and exports like any other node
         for node, data in self.nodes.items():
-            if data['gene_cluster_id'] != 'GC_00000000':
-                self.synteny_gene_clusters[node] = {}
-                node_gene_calls = json.loads(data['gene_calls_json'])
-                alignment_summary = json.loads(data['alignment_summary'])
-                for genome_name in self.genome_names:
-                    self.synteny_gene_clusters[node][genome_name] = []
-                    if genome_name in node_gene_calls:
-                        gene_callers_id = node_gene_calls[genome_name]
-                        self.synteny_gene_clusters[node][genome_name] += [gene_callers_id]
+            self.synteny_gene_clusters[node] = {}
+            node_gene_calls = json.loads(data['gene_calls_json'])
+            alignment_summary = json.loads(data['alignment_summary'])
+            for genome_name in self.genome_names:
+                self.synteny_gene_clusters[node][genome_name] = []
+                if genome_name in node_gene_calls:
+                    gene_callers_id = node_gene_calls[genome_name]
+                    self.synteny_gene_clusters[node][genome_name] += [gene_callers_id]
 
-                        if genome_name not in self.gene_callers_id_to_synteny_gene_cluster:
-                            self.gene_callers_id_to_synteny_gene_cluster[genome_name] = {}
+                    if genome_name not in self.gene_callers_id_to_synteny_gene_cluster:
+                        self.gene_callers_id_to_synteny_gene_cluster[genome_name] = {}
 
-                        self.gene_callers_id_to_synteny_gene_cluster[genome_name][gene_callers_id] = node
+                    self.gene_callers_id_to_synteny_gene_cluster[genome_name][gene_callers_id] = node
 
-                        if self.synteny_gene_clusters_gene_alignments_available:
-                            if genome_name not in self.synteny_gene_clusters_gene_alignments:
-                                self.synteny_gene_clusters_gene_alignments[genome_name] = {}
+                    if self.synteny_gene_clusters_gene_alignments_available:
+                        if genome_name not in self.synteny_gene_clusters_gene_alignments:
+                            self.synteny_gene_clusters_gene_alignments[genome_name] = {}
 
-                            self.synteny_gene_clusters_gene_alignments[genome_name][gene_callers_id] = alignment_summary[genome_name]
+                        self.synteny_gene_clusters_gene_alignments[genome_name][gene_callers_id] = alignment_summary[genome_name]
 
         self.synteny_gene_clusters_initialized = True
 

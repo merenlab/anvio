@@ -1812,41 +1812,45 @@ class PangenomeGraphUserInterface {
     }
 
     update_bin() {
+        // Re-applies every bin to the freshly drawn graph. A bin holds ids of plain nodes
+        // and of groups. Group ids are renumbered by every layout, so a binned group is
+        // first expanded into the nodes it held when it was binned, and every node is then
+        // mapped to whatever represents it in the new drawing: itself, or the group it
+        // fell into. A node that is not drawn at all -- dropped by the genome subset, or
+        // sitting in another component -- has nothing to color, so it simply stays in its
+        // bin and is colored again once it is drawn again.
         this._suppress_bin_ring_draw = true;
         for (var bin_id of Object.keys(this.bin_dict)) {
-            var nodes = this.bin_dict[bin_id];
-            var updated_nodes = []
-            for (var node of nodes) {
-                var name = document.getElementById(node);
-
-                if(name) {
-                    if (name.getAttribute('class') == 'pseudo') {
-                        var groups = Object.keys(this.group_dict);
-                        for(var g of groups) {
-                            var group = this.group_dict[g]
-                            if (group.includes(node)) {
-                                if (!updated_nodes.includes(g)){
-                                    updated_nodes.push(g)
-                                }
-                            }
-                        }
-                    } else {
-                        updated_nodes.push(node)
-                    }
+            var members = [];
+            for (var item of this.bin_dict[bin_id]) {
+                if (item in this.bin_group_dict) {
+                    members.push(...this.bin_group_dict[item]);
+                    delete this.bin_group_dict[item];
                 } else {
-                    updated_nodes.push(...this.bin_group_dict[node])
-                    delete this.bin_group_dict[node];
-                };
+                    members.push(item);
+                }
             }
 
-            this.bin_dict[bin_id] = updated_nodes
-            for (var node of this.bin_dict[bin_id]) {
-
-                this.bin_dict[bin_id] = this.bin_dict[bin_id].filter(item => item !== node);
-                var name = document.getElementById(node);
-                this.marknode(name, bin_id);
-
+            var drawn = [];
+            var not_drawn = [];
+            for (var node of members) {
+                var element = document.getElementById(node);
+                if (!element) {
+                    if (!not_drawn.includes(node)) not_drawn.push(node);
+                } else if (element.getAttribute('class') == 'pseudo') {
+                    for (var g of Object.keys(this.group_dict)) {
+                        if (this.group_dict[g].includes(node) && !drawn.includes(g)) drawn.push(g);
+                    }
+                } else if (!drawn.includes(node)) {
+                    drawn.push(node);
+                }
             }
+
+            this.bin_dict[bin_id] = not_drawn;
+            for (var item of drawn) {
+                this.marknode(document.getElementById(item), bin_id);
+            }
+            $('#' + bin_id + '_value')[0].value = this.bin_dict[bin_id].length;
         }
         this._suppress_bin_ring_draw = false;
     }
@@ -2614,7 +2618,8 @@ class PangenomeGraphUserInterface {
         this._suppress_bin_ring_draw = true;
         for (var node of this.bin_dict[bin_id]) {
             var element = document.getElementById(node);
-            this.marknode(element, bin_id);
+            // members that are not drawn have no color to reset
+            if (element) this.marknode(element, bin_id);
         }
         this._suppress_bin_ring_draw = false;
 
@@ -2635,7 +2640,8 @@ class PangenomeGraphUserInterface {
         for (var bin_id of Object.keys(this.bin_dict)) {
             for (var node of this.bin_dict[bin_id]) {
                 var element = document.getElementById(node);
-                this.marknode(element, bin_id);
+                // members that are not drawn have no color to reset
+                if (element) this.marknode(element, bin_id);
             }
         }
         this._suppress_bin_ring_draw = false;
@@ -2776,8 +2782,10 @@ class PangenomeGraphUserInterface {
                 this._suppress_bin_ring_draw = true;
                 const nodes = [...(this.bin_dict[bin_id] || [])];
                 for (var node of nodes) {
-                    this.bin_dict[bin_id] = this.bin_dict[bin_id].filter(item => item !== node);
                     var element = document.getElementById(node);
+                    // not drawn right now (genome subset, other component): stays in the bin
+                    if (!element) continue;
+                    this.bin_dict[bin_id] = this.bin_dict[bin_id].filter(item => item !== node);
                     this.marknode(element, bin_id);
                 }
                 this._suppress_bin_ring_draw = false;
@@ -5302,8 +5310,15 @@ class PangenomeGraphUserInterface {
 
                 for (const node_id of node_ids) {
                     const el = document.getElementById(node_id);
-                    if (el) this.marknode(el, bin_id);
+                    if (el) {
+                        this.marknode(el, bin_id);
+                    } else if (!this.bin_dict[bin_id].includes(node_id)) {
+                        // not drawn right now (genome subset, other component): keep it in
+                        // the bin so it is colored once it is drawn again
+                        this.bin_dict[bin_id].push(node_id);
+                    }
                 }
+                $('#' + bin_id + '_value')[0].value = this.bin_dict[bin_id].length;
             }
 
             // If nothing was loaded, add an empty default bin

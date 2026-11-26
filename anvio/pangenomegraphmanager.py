@@ -298,30 +298,35 @@ class PangenomeGraphManager():
         return n_components
 
 
-    def summarize_all_components(self, scope='global'):
-        """Run summarize() for every weakly-connected component and return
-        the concatenated ``region_sides_df`` plus a ``{node -> backbone}``
-        mapping (1 if the node sits in a BR region, 0 if VR).
+    def summarize_all_components(self, scope='global', use_stored_backbone=True):
+        """Run summarize() for every component and return the concatenated
+        ``region_sides_df`` plus a ``{node -> backbone}`` mapping (1 if the
+        node sits in a BR region, 0 if VR).
 
-        ``region_id`` values are plain ``"0"``, ``"1"``, ... per component
-        (see ``_assign_region_ids``); the concatenated frame may carry
-        duplicate ``region_id`` index values across components. Each row
-        carries a ``component_id`` column so consumers (the pan_graph_regions
-        DB table, ``self.regions``, ``self.region_sides_info``) can key by
-        ``(component_id, region_id)``.
+        Components are the ``component_id`` values present on the nodes,
+        not ``CP_0001`` to ``CP_<number of components>``: a genome subset in
+        the interface can dissolve components (and split others off under new
+        ids), so the ids need not be contiguous.
+
+        ``region_id`` values embed their component (``"CP_0001_1"``, see
+        ``_assign_region_ids``), and each row also carries a ``component_id``
+        column so consumers (the pan_graph_regions DB table, ``self.regions``,
+        ``self.region_sides_info``) can key by ``(component_id, region_id)``.
 
         ``scope`` is forwarded to ``summarize`` and controls whether the
         genome-count denominator (used for BR/VR classification and the
         normalized metrics) spans the whole graph (``'global'``) or only
         the current weakly-connected component (``'component'``).
+        ``use_stored_backbone`` is forwarded as well (see ``summarize``).
         """
-        n_components = sum(1 for _ in nx.weakly_connected_components(self.graph))
+        component_ids = sorted({d.get('component_id', 'CP_0001') for _, d in self.graph.nodes(data=True)},
+                               key=lambda cid: int(cid.split('_')[1]))
 
         region_dfs = []
         backbone_by_node = {}
-        for i in range(n_components):
-            cid = f"CP_{i + 1:04d}"
-            region_sides_df, nodes_df, _ = self.summarize(component_id=cid, scope=scope)
+        for cid in component_ids:
+            region_sides_df, nodes_df, _ = self.summarize(component_id=cid, scope=scope,
+                                                          use_stored_backbone=use_stored_backbone)
             if region_sides_df.empty:
                 continue
             region_dfs.append(region_sides_df)
@@ -338,7 +343,7 @@ class PangenomeGraphManager():
         return all_region_sides_df, backbone_by_node
 
 
-    def summarize(self, component_id='CP_0001', scope='global'):
+    def summarize(self, component_id='CP_0001', scope='global', use_stored_backbone=True):
         """Compute region-level summaries for one weakly connected component.
 
         The component is selected by the ``component_id`` attribute set on
@@ -347,6 +352,11 @@ class PangenomeGraphManager():
         (``"CP_0001_1"``, ``"CP_0001_2"``, ...), so it is globally unique on its
         own; the ``component_id`` column is still attached to ``region_sides_df``
         and stored alongside on each region row in the DB.
+
+        ``use_stored_backbone`` decides whether a ``backbone`` flag already in a
+        node's layer data overrides the coverage rule (see ``_node_is_core``).
+        Pass False when the graph is a genome subset of the one the flags were
+        computed for, so core-ness follows the genomes actually in the graph.
 
         Returns ``(region_sides_df, nodes_df, gene_calls_df)``. All three may
         be empty DataFrames if the requested component is empty or contains
@@ -397,8 +407,9 @@ class PangenomeGraphManager():
             kept OFF the backbone must not re-split a region here just because
             its coverage happens to reach all genomes. The flag is only present
             once a prior summary has run, so a fresh generation still falls back
-            to the coverage rule."""
-            backbone = (d.get('layer') or {}).get('backbone')
+            to the coverage rule. With ``use_stored_backbone`` False the flag is
+            ignored: it was computed for a different genome set."""
+            backbone = (d.get('layer') or {}).get('backbone') if use_stored_backbone else None
             try:
                 if backbone is not None:
                     return int(float(backbone)) == 1
