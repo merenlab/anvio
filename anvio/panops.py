@@ -400,9 +400,10 @@ class RarefactionAnalysis:
 
         A SynGC holds at most one gene per genome (that is what makes it a SynGC), so the
         `gene_calls_json` of a node is already exactly the set of genomes it is present in,
-        and there is nothing to count. Nodes carrying the `GC_00000000` placeholder gene
-        cluster id are not real clusters and are skipped, the same way
-        `PanGraphSuperclass.init_synteny_gene_clusters` skips them."""
+        and there is nothing to count. Nodes carrying the `GC_UNKNOWN` placeholder gene
+        cluster id (genes the pan-db has no gene cluster for, such as tRNAs and rRNAs) count
+        like any other node, the same way `PanGraphSuperclass.init_synteny_gene_clusters`
+        includes them."""
 
         pan_graph_db = dbops.PanGraphDatabase(self.db_path)
         self.project_name = pan_graph_db.meta['project_name']
@@ -412,9 +413,6 @@ class RarefactionAnalysis:
 
         pairs = []
         for node_id, gene_cluster_id, gene_calls_json in nodes:
-            if gene_cluster_id == 'GC_00000000':
-                continue
-
             for genome_name in json.loads(gene_calls_json):
                 pairs.append((node_id, genome_name))
 
@@ -2927,10 +2925,9 @@ class PangenomeGraph():
                     continue
 
                 # Guard 2b: LCA/LCD-asymmetry cap. Reject pairs whose
-                # shortest-path distances from the LCA (or to the LCD) differ
-                # by more than `remerge_max_length` edges. Each check is
-                # applied independently when its anchor exists; whichever
-                # exist must ALL pass. The cap is skipped only when it is
+                # shortest-path distances from the LCA differ by more than
+                # `remerge_max_length` edges. The LCD side is checked only
+                # when there is no LCA. The cap is skipped only when it is
                 # disabled (< 0) or when NEITHER anchor exists.
                 if self.remerge_max_length >= 0:
                     lcd = nx.lowest_common_ancestor(reverse_view, syn_a, syn_b)
@@ -3069,7 +3066,7 @@ class PangenomeGraph():
             n_dropped = pangenomegraphengine._drop_non_coding_nodes(graph)
             self.run.info_single(f"{pp(n_dropped)} non-coding nodes dropped.")
         else:
-            self.run.info_single('Non-coding nodes kept as singletons.')
+            self.run.info_single('Non-coding nodes kept (typed `rna`).')
 
         # Report the final node-type distribution as labeled rows (one per
         # type) rather than a raw dict, so the core/accessory/singleton/

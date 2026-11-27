@@ -13,9 +13,9 @@ import numpy as np
 import pandas as pd
 import networkx as nx
 import itertools as it
-import statistics as stat
 from collections import Counter
 
+from scipy.sparse import csr_matrix
 from scipy.spatial.distance import squareform
 from scipy.cluster.hierarchy import linkage, to_tree
 
@@ -39,40 +39,6 @@ pp = terminal.pretty_print
 
 additional_param_sets_for_sequence_search = {'diamond'   : '--masking 0',
                                              'ncbi_blast': ''}
-
-
-def composite_variability_score(df):
-    """Min-max-scale the four variability components of a region summary
-    DataFrame and combine them into a composite score per region.
-
-    ``df`` must contain ``complexity_normalized``, ``diversity_normalized``,
-    ``max_expansion``, and ``weight_normalized``. Each is min-max scaled
-    across the rows of ``df`` (constant columns collapse to 0). The
-    composite score is the geometric mean of the four scaled components.
-
-    Returns a DataFrame indexed like ``df`` with five new columns:
-    ``composite_variability_score``, ``complexity_mm_scaled``,
-    ``diversity_mm_scaled``, ``expansion_mm_scaled``, ``weight_mm_scaled``.
-    """
-    def _minmax(series):
-        s_min, s_max = series.min(), series.max()
-        if s_min == s_max:
-            return pd.Series(0.0, index=series.index)
-        return (series - s_min) / (s_max - s_min)
-
-    c_mm = _minmax(df['complexity_normalized'])
-    d_mm = _minmax(df['diversity_normalized'])
-    e_mm = _minmax(df['max_expansion'])
-    w_mm = _minmax(df['weight_normalized'])
-    cvs = (c_mm * d_mm * e_mm * w_mm) ** (1 / 4)
-
-    return pd.DataFrame({
-        'composite_variability_score': cvs,
-        'complexity_mm_scaled': c_mm,
-        'diversity_mm_scaled': d_mm,
-        'expansion_mm_scaled': e_mm,
-        'weight_mm_scaled': w_mm,
-    }, index=df.index)
 
 
 # ANCHOR - PangenomeGraphManager
@@ -332,30 +298,35 @@ class PangenomeGraphManager():
         return n_components
 
 
-    def summarize_all_components(self, scope='global'):
-        """Run summarize() for every weakly-connected component and return
-        the concatenated ``region_sides_df`` plus a ``{node -> backbone}``
-        mapping (1 if the node sits in a BR region, 0 if VR).
+    def summarize_all_components(self, scope='global', use_stored_backbone=True):
+        """Run summarize() for every component and return the concatenated
+        ``region_sides_df`` plus a ``{node -> backbone}`` mapping (1 if the
+        node sits in a BR region, 0 if VR).
 
-        ``region_id`` values are plain ``"0"``, ``"1"``, ... per component
-        (see ``_assign_region_ids``); the concatenated frame may carry
-        duplicate ``region_id`` index values across components. Each row
-        carries a ``component_id`` column so consumers (the pan_graph_regions
-        DB table, ``self.regions``, ``self.region_sides_info``) can key by
-        ``(component_id, region_id)``.
+        Components are the ``component_id`` values present on the nodes,
+        not ``CP_0001`` to ``CP_<number of components>``: a genome subset in
+        the interface can dissolve components (and split others off under new
+        ids), so the ids need not be contiguous.
+
+        ``region_id`` values embed their component (``"CP_0001_1"``, see
+        ``_assign_region_ids``), and each row also carries a ``component_id``
+        column so consumers (the pan_graph_regions DB table, ``self.regions``,
+        ``self.region_sides_info``) can key by ``(component_id, region_id)``.
 
         ``scope`` is forwarded to ``summarize`` and controls whether the
         genome-count denominator (used for BR/VR classification and the
         normalized metrics) spans the whole graph (``'global'``) or only
         the current weakly-connected component (``'component'``).
+        ``use_stored_backbone`` is forwarded as well (see ``summarize``).
         """
-        n_components = sum(1 for _ in nx.weakly_connected_components(self.graph))
+        component_ids = sorted({d.get('component_id', 'CP_0001') for _, d in self.graph.nodes(data=True)},
+                               key=lambda cid: int(cid.split('_')[1]))
 
         region_dfs = []
         backbone_by_node = {}
-        for i in range(n_components):
-            cid = f"CP_{i + 1:04d}"
-            region_sides_df, nodes_df, _ = self.summarize(component_id=cid, scope=scope)
+        for cid in component_ids:
+            region_sides_df, nodes_df, _ = self.summarize(component_id=cid, scope=scope,
+                                                          use_stored_backbone=use_stored_backbone)
             if region_sides_df.empty:
                 continue
             region_dfs.append(region_sides_df)
@@ -372,7 +343,7 @@ class PangenomeGraphManager():
         return all_region_sides_df, backbone_by_node
 
 
-    def summarize(self, component_id='CP_0001', scope='global'):
+    def summarize(self, component_id='CP_0001', scope='global', use_stored_backbone=True):
         """Compute region-level summaries for one weakly connected component.
 
         The component is selected by the ``component_id`` attribute set on
@@ -381,6 +352,11 @@ class PangenomeGraphManager():
         (``"CP_0001_1"``, ``"CP_0001_2"``, ...), so it is globally unique on its
         own; the ``component_id`` column is still attached to ``region_sides_df``
         and stored alongside on each region row in the DB.
+
+        ``use_stored_backbone`` decides whether a ``backbone`` flag already in a
+        node's layer data overrides the coverage rule (see ``_node_is_core``).
+        Pass False when the graph is a genome subset of the one the flags were
+        computed for, so core-ness follows the genomes actually in the graph.
 
         Returns ``(region_sides_df, nodes_df, gene_calls_df)``. All three may
         be empty DataFrames if the requested component is empty or contains
@@ -431,8 +407,9 @@ class PangenomeGraphManager():
             kept OFF the backbone must not re-split a region here just because
             its coverage happens to reach all genomes. The flag is only present
             once a prior summary has run, so a fresh generation still falls back
-            to the coverage rule."""
-            backbone = (d.get('layer') or {}).get('backbone')
+            to the coverage rule. With ``use_stored_backbone`` False the flag is
+            ignored: it was computed for a different genome set."""
+            backbone = (d.get('layer') or {}).get('backbone') if use_stored_backbone else None
             try:
                 if backbone is not None:
                     return int(float(backbone)) == 1
@@ -459,8 +436,6 @@ class PangenomeGraphManager():
                           if regions_summary_rows else pd.DataFrame()
 
         if not region_sides_df.empty:
-            cvs_cols = composite_variability_score(region_sides_df)
-            region_sides_df = pd.concat([region_sides_df, cvs_cols], axis=1)
             # Tag every row with the component it belongs to so callers that
             # concatenate across components can disambiguate the (now plain)
             # per-component region_ids.
@@ -542,77 +517,121 @@ class PangenomeGraphManager():
         return nodes_df, regions_info_dict
 
 
-    def _summarize_one_region(self, region_id, values_list, num_genomes, is_backbone):
+    def _summarize_one_region(self, region_id, values_list, num_genomes, is_backbone, log_size_cap = 100, haplotype_type = 'dissimilarity', count_empty_allel = True):
         """Compute one row of the region summary table (BR / VR + the
-        complexity / diversity / expansion / weight metrics).
+        complexity / diversity / expansion / weight metrics and the composite
+        variability score). Every metric comes from this region alone, so a row
+        does not depend on the other regions of the dataset.
 
         ``is_backbone`` comes straight from the region-boundary partition
         (``_assign_region_ids``): a region built from core columns is BR, any
         other region is VR. The variability metrics below are still computed for
         display, but no longer decide the BR/VR label -- that follows the
         boundaries, so whatever fed them (the stored backbone flag when present,
-        else coverage) is what classifies the region."""
-        genomes_sets = [item[3] for item in values_list]
-        genomes_involved = set(it.chain(*genomes_sets))
-        nodes_sets = [item[2] for item in values_list]
-        region_x = [item[0] for item in values_list]
+        else coverage) is what classifies the region.
 
-        x_min = min(region_x)
-        x_max = max(region_x)
+        ``log_size_cap``       genes at which ``expansion_log`` reaches 1.
+        ``haplotype_type``     the diversity metric, 'dissimilarity' or 'diversity'.
+        ``count_empty_allel``  whether the genomes without the region count as an
+                               allele (the empty one) in the diversity.
 
-        weight = len(genomes_involved)
-        num_gene_clusters = len({n.rsplit('_', 1)[0] for n in nodes_sets})
-        num_synteny_gene_clusters = len(nodes_sets)
-        genome_occurences = list(it.chain(*genomes_sets))
-        num_gene_calls = len(genome_occurences)
+        The composite variability score is reported twice, as the geometric and
+        as the arithmetic mean of the four 0-to-1 metrics."""
+        if haplotype_type not in ('dissimilarity', 'diversity'):
+            raise ConfigError(f"Unknown haplotype type {haplotype_type!r}; expected 'dissimilarity' or 'diversity' :/")
 
-        counts = Counter(genome_occurences)
-        values = [counts.get(g, 0) for g in genomes_involved]
-        max_expansion = max(values)
-        min_expansion = min(values) if len(genomes_involved) == num_genomes else 0
+        region_x, _, nodes, genomes_sets = zip(*values_list)
 
-        # Complexity = number of genome-sets needed to cover all genomes_involved
-        # when consumed smallest-first (proxy for structural variation).
-        sum_of_genomes = set()
-        complexity = 0
-        for genome_set in sorted(genomes_sets, key=len):
-            if set(genome_set).issubset(sum_of_genomes):
-                continue
-            complexity += 1
-            sum_of_genomes |= set(genome_set)
+        # Every genome has one allele in the region: the set of the region's SynGCs
+        # it carries (empty if it carries none). A genome is in a SynGC at most
+        # once, so the size of its allele is its number of genes in the region.
+        alleles_of_genomes = {}
+        for node, genomes in zip(nodes, genomes_sets):
+            for genome in genomes:
+                alleles_of_genomes.setdefault(genome, set()).add(node)
+        genes_per_genome = [len(allele) for allele in alleles_of_genomes.values()]
+        num_genomes_present = len(alleles_of_genomes)   # the genomes that carry the region
+        weight = num_genomes_present / num_genomes
 
-        complexity_normalized = (complexity - 1) / (num_genomes - 1) if num_genomes > 1 else 0
+        # Expansion: the genes of the genome with the most genes in the region,
+        # also on a log scale, log(1 + genes) / log(1 + log_size_cap), capped at 1.
+        max_expansion = max(genes_per_genome)
+        min_expansion = min(genes_per_genome) if num_genomes_present == num_genomes else 0
+        expansion_log = min(np.log1p(max_expansion) / np.log1p(log_size_cap), 1.0)
 
-        if len(genomes_sets) > 1 and not is_backbone:
-            diversity = (stat.pvariance([1, num_genomes])
-                         - stat.pvariance([len(s) for s in genomes_sets]))
-            diversity_normalized = (stat.pvariance([1 / num_genomes, 1])
-                                - stat.pvariance([len(s) / num_genomes for s in genomes_sets]))
-        else:
-            diversity = 0
-            diversity_normalized = 0
+        # Complexity (proxy for structural variation): the SynGCs needed to cover
+        # all genomes present, taking their genome sets smallest-first and counting
+        # each that adds a genome not yet covered (num_covering_syngcs), scaled to
+        # 0 (one SynGC covers them) to 1 (one SynGC per genome of num_genomes).
+        covered, num_covering_syngcs = set(), 0
+        for genomes in sorted(map(set, genomes_sets), key=len):
+            if not genomes <= covered:
+                num_covering_syngcs += 1
+                covered |= genomes
+        complexity = (num_covering_syngcs - 1) / (num_genomes - 1) if num_genomes > 1 else 0
 
-        weight_normalized = weight / num_genomes if num_genomes > 0 else 0
+        # Diversity: the haplotype metric ``haplotype_type`` over the alleles of N
+        # genomes, 1 - the mean similarity of their pairs. The similarity of two
+        # alleles is
+        #   'dissimilarity'  their Jaccard index: graded haplotype diversity, the
+        #                    expected Jaccard distance between the alleles of two
+        #                    random genomes. Equal to Nei's where the alleles share
+        #                    nothing, lower where they overlap.
+        #   'diversity'      1 if they are the same, else 0: Nei's haplotype
+        #                    diversity, N/(N-1) * (1 - sum p^2), the probability
+        #                    that two random genomes differ in the region at all.
+        # Two genomes without the region have the same (empty) allele. N is
+        # ``num_genomes``; with ``count_empty_allel`` False only the genomes
+        # present are compared (N is num_genomes_present), so a single-variant VR
+        # has 0. Both are 0 to 1; a backbone region has one allele, so 0.
+        N = num_genomes if count_empty_allel else num_genomes_present
+        diversity = 0.0
+        if N > 1:
+            genomes_per_allele = Counter(map(frozenset, alleles_of_genomes.values()))
+            allele_counts = np.fromiter(genomes_per_allele.values(), dtype=float)
+            # the pairs with the same allele, the empty one included
+            similarity = ((allele_counts * (allele_counts - 1) / 2).sum()
+                          + (N - num_genomes_present) * (N - num_genomes_present - 1) / 2)
+            if haplotype_type == 'dissimilarity':
+                # plus the Jaccard index of every two different alleles, from the SynGCs
+                # they share (one sparse matrix product)
+                alleles = list(genomes_per_allele)
+                size = np.array([len(allele) for allele in alleles])
+                node_index = {node: i for i, node in enumerate(nodes)}
+                rows = np.repeat(np.arange(len(alleles)), size)
+                cols = [node_index[node] for allele in alleles for node in allele]
+                A = csr_matrix((np.ones(len(cols)), (rows, cols)), shape=(len(alleles), len(nodes)))
+                shared = (A @ A.T).tocoo()
+                pair = shared.row < shared.col
+                a, b, n = shared.row[pair], shared.col[pair], shared.data[pair]
+                similarity += (allele_counts[a] * allele_counts[b] * n / (size[a] + size[b] - n)).sum()
+            diversity = float(1 - similarity / (N * (N - 1) / 2))
 
-        # BR/VR follows the region boundaries, not the variability metrics.
-        region = 'BR' if is_backbone else 'VR'
+        # Composite variability score: the geometric and the arithmetic mean of the
+        # four 0-to-1 metrics.
+        metrics = np.array([complexity, diversity, expansion_log, weight])
+        composite_variability_score_geometric = float(metrics.prod() ** (1 / len(metrics)))
+        composite_variability_score_arithmetic = float(metrics.mean())
 
         return {
             'region_id': region_id,
-            'region': region,
-            'x_min': x_min,
-            'x_max': x_max,
-            'num_synteny_gene_clusters': num_synteny_gene_clusters,
-            'num_gene_clusters': num_gene_clusters,
-            'num_gene_calls': num_gene_calls,
+            'region': 'BR' if is_backbone else 'VR',   # follows the region boundaries, not the metrics
+            'x_min': min(region_x),
+            'x_max': max(region_x),
+            'num_synteny_gene_clusters': len(nodes),
+            'num_gene_clusters': len({node.rsplit('_', 1)[0] for node in nodes}),
+            'num_gene_calls': sum(genes_per_genome),
+            'num_genomes': num_genomes,
             'max_expansion': max_expansion,
             'min_expansion': min_expansion,
+            'expansion_log': expansion_log,
+            'num_covering_syngcs': num_covering_syngcs,
             'complexity': complexity,
-            'complexity_normalized': complexity_normalized,
             'diversity': diversity,
-            'diversity_normalized': diversity_normalized,
+            'num_genomes_present': num_genomes_present,
             'weight': weight,
-            'weight_normalized': weight_normalized,
+            'composite_variability_score_geometric': composite_variability_score_geometric,
+            'composite_variability_score_arithmetic': composite_variability_score_arithmetic,
         }
 
 
@@ -628,59 +647,6 @@ class PangenomeGraphManager():
         if not rows:
             return pd.DataFrame()
         return pd.DataFrame(rows).set_index(['genome', 'gene_caller_id'])
-
-    # @staticmethod
-    # def composite_variability_score(df, N):
-
-    #     C_max = df['complexity'].max()
-    #     # Option 2:
-    #     # C_min = df['complexity'].min()
-
-    #     E_max = df['expansion'].max()
-    #     # Option 2:
-    #     # E_min = df['max_expansion'].min()
-
-    #     W_median = df['weight'].median()
-
-    #     def log_min_max_normalize(X, X_min, X_max):
-    #         if X_min == X_max:
-    #             return 0.0
-    #         X_norm = (math.log(1 + X) - math.log(1 + X_min)) / (math.log(1 + X_max) - math.log(1 + X_min))
-    #         return(X_norm)
-
-    #     def fixed_baseline_log_scaling(X, X_max):
-    #         if X_max == 0.0:
-    #             return(0.0)
-    #         else:
-    #             X_norm = (math.log(1 + X)) / (math.log(1 + X_max))
-    #             return(X_norm)
-
-    #     def func(row):
-
-    #         C = row['complexity']
-    #         E = row['expansion']
-    #         W = row['weight']
-    #         D = row['diversity']
-
-    #         C_norm = fixed_baseline_log_scaling(C, C_max)
-    #         # Option 2:
-    #         # C_norm = log_min_max_normalize(C, C_min, C_max)
-
-    #         E_norm = fixed_baseline_log_scaling(E, E_max)
-    #         # Option 2:
-    #         # E_norm = log_min_max_normalize(E, E_min, E_max)
-
-    #         W_f = W/N
-    #         # Option 2:
-    #         # W_f = (1 - math.e**(-W/W_median))
-    #         # Option 3:
-    #         # W_f = (1 - math.e**(-W/W_median)) / (1 - math.e**(-N/W_median))
-
-    #         CVS = (C_norm * D * E_norm)**(1/3) * W_f
-
-    #         return([CVS, C_norm, E_norm, W_f])
-
-    #     return(func)
 
 
     def set_node_positions(self, node_positions):

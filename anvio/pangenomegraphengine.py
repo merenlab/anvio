@@ -488,6 +488,41 @@ def _fuse_genes(G, u, v, w, score, mean, label,
             target.update(source)
 
 
+def _new_line_fuse_rejection(G, off_genome, in_gene, in_li,
+                             super_of_gene, uf_parent, wcc_uf_parent,
+                             line_to_genome, wcc_genome_count,
+                             max_contigs_per_component):
+    """Why fusing a gene of a line that is NOT in G yet onto ``in_gene``
+    would be rejected by :py:func:`_fuse_genes`, or ``None`` if it would go
+    through.
+
+    A line about to be added is a fresh chain of singleton super-nodes in a
+    WCC of its own, so only two of the rejections in ``_fuse_genes`` can
+    apply: the super-node of ``in_gene`` already holds a gene of the line's
+    genome (``same-genome-conflict``), or the component of ``in_gene``
+    already holds ``max_contigs_per_component`` contigs of that genome
+    (``max-contigs-per-component``). ``transitive-cycle`` can't happen,
+    since nothing connects the new line to G yet.
+
+    Asking this BEFORE the line is added keeps a line whose fuse would be
+    rejected off the graph, free to join through another edge. Adding it
+    first would commit it as a disconnected component of its own, which the
+    different-components gate then keeps apart from everything already
+    placed. Both rejections only ever get more likely as the graph grows
+    (super-nodes and components only gain genomes), so once a fuse is
+    rejected here it stays rejected.
+    """
+    B = _uf_find(uf_parent, super_of_gene[in_gene])
+    b_genomes = {line_to_genome[g.rsplit(":", 1)[0]] for g in G.nodes[B].get("genes", ())}
+    if off_genome in b_genomes:
+        return "same-genome-conflict"
+    if max_contigs_per_component is not None and max_contigs_per_component > 0:
+        root = _uf_find(wcc_uf_parent, in_li)
+        if wcc_genome_count.get(root, {}).get(off_genome, 0) + 1 > max_contigs_per_component:
+            return "max-contigs-per-component"
+    return None
+
+
 def _try_commit_tie_line(li, lines, line_names, anchors, pending_merges, G,
                          super_of_gene, uf_parent, wcc_uf_parent,
                          line_idx_by_name,
@@ -495,10 +530,36 @@ def _try_commit_tie_line(li, lines, line_names, anchors, pending_merges, G,
                          line_to_genome, wcc_genome_count,
                          max_contigs_per_component):
     """Commit a tie-only line if it has >=2 anchors with distinct
-    line-positions AND distinct graph topological positions."""
+    line-positions AND distinct graph topological positions, and at least
+    one of its pending merges would be accepted (otherwise the line stays
+    off the graph, see :py:func:`_new_line_fuse_rejection`)."""
     li_anchors = anchors[li]
     if len(li_anchors) < 2:
         return False
+
+    # Each anchor is the in-graph end of the pending merge at the same index.
+    # An anchor found unfusable is marked and not checked again (rejections
+    # are permanent, see _new_line_fuse_rejection); its merge stays pending,
+    # so it is still recorded as rejected when the line commits or ends up
+    # as an orphan.
+    off_genome = line_to_genome[line_names[li]]
+    any_fusable = False
+    for anchor in li_anchors:
+        if anchor.get("rejected"):
+            continue
+        in_gene = anchor["in_gene"]
+        reason = _new_line_fuse_rejection(G, off_genome, in_gene,
+                                          line_idx_by_name[in_gene.rsplit(":", 1)[0]],
+                                          super_of_gene, uf_parent, wcc_uf_parent,
+                                          line_to_genome, wcc_genome_count,
+                                          max_contigs_per_component)
+        if reason is None:
+            any_fusable = True
+            break
+        anchor["rejected"] = reason
+    if not any_fusable:
+        return False
+
     topo = {n: i for i, n in enumerate(nx.topological_sort(G))}
     for i in range(len(li_anchors)):
         for j in range(i + 1, len(li_anchors)):
@@ -1685,11 +1746,12 @@ class PangenomeGraphEngine():
         ``in_g_lines`` (Prim-style growth).  For each picked edge:
 
         * Both lines already in G -> attempt a fuse.
-        * One line off-graph, labeled pair -> add the off line in the
-          implied orientation, then fuse.
+        * One line off-graph, labeled pair -> if the fuse would be accepted,
+          add the off line in the implied orientation, then fuse; if not,
+          the line stays off-graph (see ``_new_line_fuse_rejection``).
         * One line off-graph, tie pair -> stash an anchor; commit the off
           line once it has >=2 anchors with distinct line- and graph-topo
-          positions.
+          positions and at least one of its pending fuses would be accepted.
         * Both lines off-graph -> seed two new lines in the natural
           orientation (Line_X) and flipped if labeled flip (Line_Y).
 
@@ -1887,6 +1949,15 @@ class PangenomeGraphEngine():
                     off_li, off_gene, in_li, in_gene = li_u, u, li_v, v
 
                 if label in ("same", "flip"):
+                    # Only add the line if this fuse will go through; otherwise it
+                    # stays off the graph and can still join through another edge.
+                    reason = _new_line_fuse_rejection(G, line_to_genome[line_names[off_li]],
+                                                      in_gene, in_li, super_of_gene, uf_parent,
+                                                      wcc_uf_parent, line_to_genome,
+                                                      wcc_genome_count, max_contigs)
+                    if reason:
+                        rejected_edges.append((u, v, mean, reason))
+                        continue
                     off_flip = in_g_flip[in_li] ^ (label == "flip")
                     _add_line_to_graph(G, off_li, lines, line_names, off_flip,
                                        super_of_gene, uf_parent, wcc_uf_parent,
@@ -1920,6 +1991,9 @@ class PangenomeGraphEngine():
                         anchors.pop(off_li, None)
                         pending_merges.pop(off_li, None)
             else:
+                # Two fresh lines can't be rejected: candidate edges are always
+                # cross-genome, so neither the same-genome nor the contig cap can
+                # trip, and nothing connects them yet, so no cycle either.
                 fu = False
                 fv = True if label == "flip" else False
                 _add_line_to_graph(G, li_u, lines, line_names, fu,
