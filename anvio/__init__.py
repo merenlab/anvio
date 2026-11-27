@@ -1465,18 +1465,40 @@ D = {
             ['--add-per-population-copy-number'],
             {'default': False,
              'action': 'store_true',
-             'help': "Request an additional output matrix that reports the per-population copy number (PPCN) of each "
-                     "function in every metagenomic assembly (or long-read metagenome). anvi'o divides the frequency of a "
-                     "function in a given assembly by the number of populations estimated to be present in that same "
-                     "assembly (estimated from single-copy core genes: the mode of the number of hits to the single-copy "
-                     "core genes of each domain, summed across Bacteria, Archaea, and Eukarya, just like "
-                     "`anvi-display-contigs-stats` does). This normalization is useful for metagenomic assemblies, where the "
-                     "raw frequency of a function scales with the number of populations in the assembly and is therefore "
-                     "not comparable across samples of vastly different community sizes. It follows the per-population copy "
-                     "number normalization introduced by Iva Veseli (Veseli et al. 2025). It requires that your "
-                     "contigs databases have been annotated with single-copy core genes via `anvi-run-hmms`, and it works "
-                     "only with an external-genomes file (`-e`), since population normalization is meaningful for whole "
-                     "metagenomic assemblies but not for individual genomes or a genomes storage database."}
+             # Please NOTE: The following help text describes only the normalization method that is common to every
+             # program that accepts this flag. But each program will have to prepend its own sentence(s) on WHAT is
+             # being normalized :) Please see the examples in `anvi-gen-function-matrix` and `anvi-estimate-metabolism`.
+             # This strategy enables the common description of the method to live in only one place.
+             'help': "anvi'o divides that number by the number of populations estimated to be present in the same "
+                     "assembly from single-copy core genes (SCGs). By default, anvi'o uses the 'mode' of the number "
+                     "of hits to the SCGs of each domain, but other statistics to work with the SCG hits are available "
+                     "(see `--num-population-estimator-statistic` and the online help for this program). For instance "
+                     "'median' may be more accurate when comparing normalized values across extremely complex "
+                     "metagenomic assemblies. This normalization logic follows the per-population copy number (PPCN) "
+                     "normalization introduced by Veseli et al. (2025), and it requires that your contigs-db files "
+                     "have been annotated with single-copy core genes via `anvi-run-hmms`."}
+                ),
+    'num-population-estimator-statistic': (
+            ['--num-population-estimator-statistic'],
+            {'default': None,
+             'metavar': 'ESTIMATOR',
+             'choices': ['mode', 'median'],
+             'help': "With this parameter you tell anvi'o 'how' to summarize the SCG frequencies into an estimated "
+                     "number of microbial populations when reporting per-population copy numbers (only relevant with "
+                     "`--add-per-population-copy-number`). The default statistic of doing that, which is 'mode', takes "
+                     "the most frequent hit count, which is what anvi'o has always done. Another option, 'median' "
+                     "takes the median SCG hit count instead. In complex metagenomes the hit counts can spread widely "
+                     "across single-copy core genes, and the most frequent value may be decided by a tie among a few "
+                     "genes that sits far from the center of the distribution, which CAN inflate or deflate PPCN of "
+                     "functions in a given sample by the same factor. The median is less sensitive to that, at the "
+                     "expense of being more responsive to systematic shifts across many genes. So what does this "
+                     "mean now? Well, if a large fraction of SCGs are missed or fragmented in the assembly, the median "
+                     "will drift with them, whereas the mode can still hold on to a clear peak if there is one. The "
+                     "salient point is the following (which often is the case with serious omics analyses): even how to "
+                     "normalize your SCG counts to estimate the number of populations in your samples will depend on "
+                     "your very specific dataset. Thus, it is a good idea to run your analysis with multiple "
+                     "normalization strategies (i.e., with mode and median in this case), and make sure that the signal "
+                     "you are focusing on does not depend on this choice (or you can explain the differences)."}
                 ),
 
     'include-gc-identity-as-function': (

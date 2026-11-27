@@ -4,6 +4,7 @@
 
 import sys
 import textwrap
+import statistics
 from collections import Counter
 
 from scipy import stats
@@ -20,6 +21,11 @@ from anvio.errors import ConfigError
 run = terminal.Run()
 progress = terminal.Progress()
 P = terminal.pluralize
+
+# Ways to summarize SCG hit count distributions of a given HMM source into
+# a single estimate of the number of genomes (see `get_num_genomes_from_SCG_sources_dict`).
+# Now we have two ways of doing it, we can extend this list in the future if necessary.
+NUM_POPULATIONS_ESTIMATORS = ['mode', 'median']
 
 
 class SequencesForHMMHits:
@@ -379,7 +385,31 @@ class SequencesForHMMHits:
         return gene_hit_counts
 
 
-    def get_num_genomes_from_SCG_sources_dict(self):
+    def get_num_genomes_from_SCG_sources_dict(self, estimator='mode'):
+        """Estimate the number of genomes per single-copy core gene (SCG) source.
+
+        For each SCG source, anvi'o counts the number of hits to every SCG in that source, and summarizes
+        this distribution of counts into a single number of genomes using one of `NUM_POPULATIONS_ESTIMATORS`:
+
+            - 'mode' (default): the most frequent hit count. This is what anvi'o has always used, and it works
+              well when most SCGs are recovered at the same count (e.g., a single genome, or a metagenome with
+              relatively few populations).
+
+            - 'median': the median hit count. In complex metagenomic assemblies the counts spread widely across
+              SCGs, and the most frequent value can be decided by a tie among a few genes that sits far from the
+              center of the distribution. The median is much less sensitive to that.
+
+        Parameters
+        ==========
+        estimator : str
+            One of `NUM_POPULATIONS_ESTIMATORS`.
+        """
+
+        if estimator not in NUM_POPULATIONS_ESTIMATORS:
+            raise ConfigError(f"The estimator '{estimator}' is not something anvi'o knows how to use to estimate the "
+                              f"number of genomes from single-copy core genes. Here are the ones it knows about: "
+                              f"{', '.join(NUM_POPULATIONS_ESTIMATORS)}.")
+
         SCG_sources = [key for key in self.hmm_hits_info if self.hmm_hits_info[key]['search_type'] == 'singlecopy']
 
         if not len(SCG_sources):
@@ -390,7 +420,13 @@ class SequencesForHMMHits:
         num_genomes_per_SCG_source = {}
         for SCG_source in SCG_sources:
             l = list(gene_hit_counts_per_hmm_source[SCG_source].values())
-            num_genomes_per_SCG_source[SCG_source] = {'num_genomes': int(stats.mode(l)[0]),
+
+            if estimator == 'median':
+                num_genomes = int(round(statistics.median(l))) if len(l) else 0
+            else:
+                num_genomes = int(stats.mode(l)[0])
+
+            num_genomes_per_SCG_source[SCG_source] = {'num_genomes': num_genomes,
                                                       'domain': self.hmm_hits_info[SCG_source]['domain']}
 
         return num_genomes_per_SCG_source
@@ -1088,14 +1124,16 @@ class NumGenomesEstimator(SequencesForHMMHits):
     - Major changes in this class should consdier the use case example
       in `anvio/docs/artifacts/contigs-db.md`.
     """
-    def __init__(self, contigs_db_path, run=terminal.Run(verbose=False), progress=terminal.Progress(verbose=False)):
+    def __init__(self, contigs_db_path, run=terminal.Run(verbose=False), progress=terminal.Progress(verbose=False), estimator='mode'):
+        """`estimator` is one of `NUM_POPULATIONS_ESTIMATORS` (see `get_num_genomes_from_SCG_sources_dict`)."""
         self.run = run
         self.progress = progress
         self.contigs_db_path = contigs_db_path
+        self.estimator = estimator
 
         SequencesForHMMHits.__init__(self, self.contigs_db_path, run=self.run, progress=self.progress)
 
-        self.estimates_dict = self.get_num_genomes_from_SCG_sources_dict()
+        self.estimates_dict = self.get_num_genomes_from_SCG_sources_dict(estimator=self.estimator)
 
         self.per_domain_totals = {}
         for entry in self.estimates_dict.values():
