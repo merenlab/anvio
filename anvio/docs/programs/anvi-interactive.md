@@ -54,10 +54,7 @@ The clustering of %(bin)ss in this case based on their distribution across sampl
 
 ### Genes mode: Visualizing *genes* instead of contigs
 
-You can also start the interactive interface in "gene mode", in which each item of the central tree is a gene instead of a split or contig (or
-
-
-bin like in "collection mode").
+You can also start the interactive interface in "gene mode", in which each item of the central tree is a gene instead of a split or contig (or bin like in "collection mode").
 
 To initiate the visualization in gene mode you need the following:
 
@@ -70,6 +67,10 @@ anvi-interactive -p %(profile-db)s \
 {{ codestop }}
 
 If there isn't one already, this command will automatically generate an anvi'o %(genes-db)s under the `GENES` directory at the same level of the profile database. When the same command is run again, %(anvi-interactive)s will use the existing genes database.
+
+In addition to the views for mean coverage, detection, and non-outlier mean coverage and standard deviation of each gene, gene mode by default also offers five views of normalized gene coverages, each with its own item order: `log1p`, `cov_per_million` (mean coverage depth per million mapped reads), and per-gene z-scores across samples for raw, log1p, and cov_per_million values (`zscore_raw`, `zscore_log1p`, and `zscore_cov_per_million`). Anvi'o computes them once, stores them in the genes database, and reads them from there in subsequent runs. Setting a __center__ value of 0 for z-score views in the interface will display them as diverging values. See %(anvi-gen-gene-level-stats-databases)s for details on what these normalizations are and how to interpret them.
+
+If you don't want these data, you can add the flag `--skip-computing-gene-level-normalized-coverages` to your command when the genes database is first created, in which case these views will not be available (normalized coverages that are already stored in a genes database will still be shown). This flag is required when your %(profile-db)s has only one sample and a new genes database is being created, since per-gene z-scores across samples are not meaningful with a single sample. This flag can only be used together with `--gene-mode`.
 
 In this view you can order genes based on their distributions patterns across metagenomes (*without paying attention to their synteny*) or by ordering them based on their synteny in a given genome (*without paying attention to their differential distribution*). [Figure 2 in this paper](https://peerj.com/articles/4320/) examples the latter, and [Figure 5 in this paper](https://stm.sciencemag.org/content/11/507/eaau9356) examples the former case, which is also shown below:
 

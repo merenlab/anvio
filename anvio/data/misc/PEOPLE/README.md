@@ -26,6 +26,7 @@ Feel free to use this **template** for new entries:
 - github: (github username)
   name: (full name)
   twitter: (twitter username, if you have one and/or wish to list one)
+  bluesky: (bluesky handle, e.g., yourname.bsky.social, if you have one and/or wish to list one)
   web: (https://your-web-page)
   avatar: (your-avatar.png that is in the AVATARS directory)
   email: (email address)

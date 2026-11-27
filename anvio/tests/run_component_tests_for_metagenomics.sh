@@ -713,12 +713,11 @@ anvi-gen-variability-profile -c $output_dir/CONTIGS.db \
                              --engine AA \
                              --no-progress
 
-INFO "Computing INSeq stats database"
+INFO "Computing gene level stats database"
 anvi-gen-gene-level-stats-databases -c $output_dir/CONTIGS.db \
                                     -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                                     -C DEFAULT \
                                     -b EVERYTHING \
-                                    --inseq-stats \
                                     --no-progress
 
 INFO "Searching for sequence motifs in the profile database"
