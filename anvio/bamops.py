@@ -403,6 +403,10 @@ class Read:
         self.reference_start = read.reference_start
         self.reference_end = read.reference_end
 
+        # the alignment as the aligner reported it, before any trimming to a region (see iterate_deletions_starting_in)
+        self.untrimmed_cigartuples = read.cigartuples
+        self.untrimmed_reference_start = read.reference_start
+
         if read.has_tag('MD'):
             self.reference_sequence = np.frombuffer(read.get_reference_sequence().upper().encode('ascii'), np.uint8)
         else:
@@ -458,6 +462,49 @@ class Read:
 
         for start, stop in utils.get_constant_value_blocks(array[:, 2], mapping_type):
             yield array[start:stop, :]
+
+
+    def iterate_deletions_starting_in(self, start, end):
+        """Yield (position, length) of every deletion of the untrimmed alignment that starts in [start, end)
+
+        Reads are trimmed to the region being profiled (a split), so a deletion that crosses an edge of the region
+        is cut there, and a deletion that crosses a split boundary would be recorded as one piece per split. Taking
+        deletions from the untrimmed alignment, and only those that start in the region, records each deletion once,
+        whole, in the region where it starts. Only CIGAR D operations are deletions, and consecutive D operations form
+        one deletion. N (a skipped region of the reference, such as an intron in a spliced alignment) is not a
+        deletion, and like any other operation it ends the deletion before it.
+
+        Parameters
+        ==========
+        start, end : int
+            The region, in reference coordinates (end exclusive)
+
+        Yields
+        ======
+        position, length : tuple
+            The reference position of a deletion and its length
+        """
+
+        ref = self.untrimmed_reference_start
+        del_start = None
+        for operation, length in self.untrimmed_cigartuples:
+            if operation == 2:  # D
+                if del_start is None:
+                    del_start = ref
+                ref += length
+                continue
+
+            if del_start is not None:
+                if start <= del_start < end:
+                    yield del_start, ref - del_start
+                del_start = None
+
+            _, consumes_reference = constants.cigar_consumption[operation]
+            if consumes_reference:
+                ref += length
+
+        if del_start is not None and start <= del_start < end:
+            yield del_start, ref - del_start
 
 
     def __getitem__(self, key):

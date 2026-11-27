@@ -46,3 +46,5 @@ python -c 'import anvio.tables as t; print(t.indels_table_name)'
 In this case, the start position of the insertion in the contig is 6. The insertion _follows_ the position it is defined by. This is opposite to IGV, in which the insertion _precedes_ the position it is defined by.
 
 For deletions, there is no such ambiguity in the start position, since the deletion starts on a reference position, not in between two reference positions.
+
+Each deletion is reported once, at its full length, in the split where it starts, even when it extends into the next split (or beyond). As a result, the `pos` of a deletion is always within its split, but `pos` + `length` can go past the end of that split. In the inspection pages of the interactive interface, a deletion also appears in the splits it extends into, along with the region it deletes, and %(anvi-split)s cuts deletions where a bin cuts a contig. Only deletions in the CIGAR string (`D`) are reported: skipped regions of the reference (`N`), such as introns in a spliced alignment, are not deletions.

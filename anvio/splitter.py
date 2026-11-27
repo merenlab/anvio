@@ -8,6 +8,8 @@ import sys
 import copy
 import argparse
 
+import numpy as np
+
 from collections import Counter
 
 import anvio
@@ -707,13 +709,15 @@ class BinSplitter(summarizer.Bin, XSplitter):
         else:
             tables[t.variable_nts_table_name] = ('split_name', self.split_names)
             tables[t.variable_codons_table_name] = ('corresponding_gene_call', self.gene_caller_ids)
-            tables[t.indels_table_name] = ('split_name', self.split_names)
 
         bin_profile_db.disconnect()
 
         self.migrate_data(tables, self.profile_db_path, self.bin_profile_db_path)
 
         self.progress.end()
+
+        if not self.skip_variability_tables:
+            self.do_indels_table()
 
         if not self.skip_hierarchical_clustering:
             dbops.do_hierarchical_clustering_of_items(self.bin_profile_db_path, constants.clustering_configs['merged' if merged else 'single'], self.split_names,
@@ -726,6 +730,167 @@ class BinSplitter(summarizer.Bin, XSplitter):
         bins_info_dict = {'ALL_SPLITS': {'html_color': '#FF0000', 'source': 'anvi-split'}}
         collections = TablesForCollections(self.bin_profile_db_path)
         collections.append('DEFAULT', collection_dict, bins_info_dict=bins_info_dict)
+
+
+    def do_indels_table(self):
+        """Copies the indels of the bin's splits into the bin profile, and cuts deletions where the bin cuts a contig
+
+        A deletion is stored once, in the split where it starts, and it may extend into the splits that follow (see
+        `bamops.Read.iterate_deletions_starting_in`). When a bin holds only some of the splits of a contig, a
+        deletion may start or end in a split that is not in the bin. Such a deletion is cut to the regions of the
+        contig that are in the bin, and each piece is stored in the split where it starts. A piece that starts where
+        the deletion starts keeps all its values but its length. A piece that starts at the beginning of a split
+        gets the values that depend on its position: gene call information, reference base, coverage, and coverage
+        outlier flags. Coverage and outlier flags are computed from the split coverages in the auxiliary data, the
+        way anvi-profile computes them. If there is no auxiliary data, the piece keeps those of the deletion.
+        """
+
+        self.progress.new('Splitting "%s"' % self.bin_id)
+        self.progress.update('Subsetting the indels table')
+
+        splits_basic_info = self.summary.splits_basic_info
+
+        # the regions of each contig that are in the bin: consecutive splits of the bin form one region
+        regions_in_bin = {}
+        for split_name in sorted(self.split_names, key=lambda s: (splits_basic_info[s]['parent'], splits_basic_info[s]['start'])):
+            split_info = splits_basic_info[split_name]
+            regions = regions_in_bin.setdefault(split_info['parent'], [])
+            if regions and regions[-1][1] == split_info['start']:
+                regions[-1][1] = split_info['end']
+            else:
+                regions.append([split_info['start'], split_info['end']])
+
+        # the splits of these contigs in order, since a deletion that starts outside of the bin may extend into it
+        splits_of_contigs = {}
+        for split_name, split_info in splits_basic_info.items():
+            if split_info['parent'] in regions_in_bin:
+                splits_of_contigs.setdefault(split_info['parent'], []).append(split_name)
+
+        for contig_name in splits_of_contigs:
+            splits_of_contigs[contig_name].sort(key=lambda s: splits_basic_info[s]['start'])
+
+        split_starting_at = {(splits_basic_info[s]['parent'], splits_basic_info[s]['start']): s for s in self.split_names}
+
+        source_db = db.DB(self.profile_db_path, None, ignore_version=True)
+        split_names_of_contigs = [s for split_names in splits_of_contigs.values() for s in split_names]
+        where_clause = "split_name IN (%s)" % ','.join(['"%s"' % s for s in split_names_of_contigs])
+        indels = list(source_db.get_some_rows_from_table_as_dict(t.indels_table_name, where_clause, error_if_no_data=False).values())
+        source_db.disconnect()
+
+        bin_split_names = set(self.split_names)
+        entries = []
+        pieces_starting_in_a_new_split = []
+        for indel in indels:
+            if indel['type'] != 'DEL':
+                if indel['split_name'] in bin_split_names:
+                    entries.append(indel)
+
+                continue
+
+            deletion_start = indel['pos_in_contig']
+            deletion_end = deletion_start + indel['length']
+            for region_start, region_end in regions_in_bin[splits_basic_info[indel['split_name']]['parent']]:
+                if region_end <= deletion_start or region_start >= deletion_end:
+                    continue
+
+                piece = dict(indel)
+                piece_start, piece_end = max(deletion_start, region_start), min(deletion_end, region_end)
+                piece['length'] = piece_end - piece_start
+
+                if piece_start != deletion_start:
+                    # the deletion starts outside of the bin, so this piece starts at the beginning of a split
+                    piece['split_name'] = split_starting_at[(splits_basic_info[indel['split_name']]['parent'], piece_start)]
+                    piece['pos'] = 0
+                    piece['pos_in_contig'] = piece_start
+                    pieces_starting_in_a_new_split.append(piece)
+
+                entries.append(piece)
+
+        no_auxiliary_data = False
+        if pieces_starting_in_a_new_split:
+            no_auxiliary_data = not self.set_position_dependent_values_of_deletion_pieces(pieces_starting_in_a_new_split, splits_of_contigs)
+
+        if entries:
+            bin_profile_db = db.DB(self.bin_profile_db_path, None, ignore_version=True, skip_rowid_prepend=True)
+            bin_profile_db._exec_many('''INSERT INTO %s VALUES(%s)''' % (t.indels_table_name, ','.join(['?'] * len(t.indels_table_structure))),
+                                      [tuple(entry[key] for key in t.indels_table_structure) for entry in entries])
+            bin_profile_db.disconnect()
+
+        self.progress.end()
+
+        if no_auxiliary_data:
+            self.run.warning(f"The bin '{self.bin_id}' holds only some of the splits of a contig, and {len(pieces_starting_in_a_new_split)} "
+                             f"deletion(s) that start in a split outside of the bin extend into it. These deletions are cut at the "
+                             f"edge of the bin, and the piece in the bin should get the coverage and coverage outlier flags of "
+                             f"the position where it starts. But there is no auxiliary data for this profile database to compute "
+                             f"them from, so these pieces keep the values of the deletion they come from.")
+
+
+    def set_position_dependent_values_of_deletion_pieces(self, pieces, splits_of_contigs):
+        """Sets the values that depend on the position of pieces of deletions that start at the beginning of a split
+
+        Gene call information and the reference base come from the contigs database. Coverage and coverage outlier
+        flags are computed from the split coverages in the auxiliary data, the way anvi-profile computes them for a
+        deletion (see `variability.ProcessIndelCounts` and `contigops.Contig.analyze_coverage`).
+
+        Parameters
+        ==========
+        pieces : list of dict
+            Indels table entries whose `split_name`, `pos`, `pos_in_contig`, and `length` are already set
+        splits_of_contigs : dict
+            The split names of each contig of the pieces, in order
+
+        Returns
+        =======
+        auxiliary_data_available : bool
+            False if there is no auxiliary data, in which case pieces keep their coverage and outlier flags
+        """
+
+        gene_info_fields = ['corresponding_gene_call', 'codon_order_in_gene', 'base_pos_in_codon', 'in_noncoding_gene_call', 'in_coding_gene_call']
+
+        gene_info_of_contigs = {}
+        for piece in pieces:
+            contig_name = self.summary.splits_basic_info[piece['split_name']]['parent']
+            if contig_name not in gene_info_of_contigs:
+                gene_info_of_contigs[contig_name] = self.summary.get_gene_info_for_each_position(contig_name, info=gene_info_fields)
+
+            for field in gene_info_fields:
+                piece[field] = int(gene_info_of_contigs[contig_name][field][piece['pos_in_contig']])
+
+            piece['reference'] = self.summary.contig_sequences[contig_name]['sequence'][piece['pos_in_contig']]
+
+        if not self.summary.auxiliary_profile_data_available:
+            return False
+
+        auxiliary_data = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.summary.auxiliary_data_path,
+                                                                         self.summary.a_meta['contigs_db_hash'],
+                                                                         db_variant=self.db_variant)
+
+        split_coverages = {}
+        get_split_coverages = lambda split_name: split_coverages.setdefault(split_name, auxiliary_data.get(split_name))
+
+        contig_outliers = {}
+        for piece in pieces:
+            contig_name = self.summary.splits_basic_info[piece['split_name']]['parent']
+            sample_name = piece['sample_id']
+
+            split_coverage = get_split_coverages(piece['split_name'])[sample_name]
+
+            # a deletion's coverage is the mean coverage over the part of the deletion in the split, plus the number of
+            # reads that carry the deletion
+            piece['coverage'] = float(np.mean(split_coverage[0:piece['length']])) + piece['count']
+
+            piece['cov_outlier_in_split'] = int(utils.get_list_of_outliers(split_coverage, median=np.median(split_coverage))[0])
+
+            if (contig_name, sample_name) not in contig_outliers:
+                contig_coverage = np.concatenate([get_split_coverages(s)[sample_name] for s in splits_of_contigs[contig_name]])
+                contig_outliers[(contig_name, sample_name)] = utils.get_list_of_outliers(contig_coverage, median=np.median(contig_coverage))
+
+            piece['cov_outlier_in_contig'] = int(contig_outliers[(contig_name, sample_name)][piece['pos_in_contig']])
+
+        auxiliary_data.close()
+
+        return True
 
 
     def cluster_contigs_anvio(self):
