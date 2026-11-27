@@ -139,6 +139,19 @@ anvi-profile -c Ross_sea_contigs.db  \
             --report-variability-full
 {{ codestop }}
 
+`--report-variability-full` is a shorthand for two more specific flags. Use `--report-SNV-variability-full` to report every variable nucleotide position without changing how indels are reported, and `--report-INDEL-variability-full` to report every indel without changing how SNVs are reported. The two can be used on their own, and they can not be combined with `--report-variability-full`.
+
+Long-read metagenomes are a common case where you want to be selective. Sequencing errors create a very large number of short indels, and storing every per-position SNV row costs a lot of time, memory, and disk. If you only care about longer indels, you can ask anvi'o to discard shorter ones as the reads are processed:
+
+{{ codestart }}
+anvi-profile -c %(contigs-db)s \
+             -i %(bam-file)s \
+             --report-INDEL-variability-full \
+             --min-indel-length 100
+{{ codestop }}
+
+The indels that are stored are identical to what you would get by filtering a full profile afterwards, so `--min-indel-length` only affects what is stored. Its default, `0`, stores all indels. It can not be used with `--skip-INDEL-profiling`.
+
 ## Other Parameters
 
 You should provide the sample name with the flag `-S` and can provide a description of your project using the `--description` tag followed by a text file. These will help anvi'o name output files and will show up in the anvi'o interfaces down the line.

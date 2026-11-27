@@ -241,6 +241,11 @@ class MultipleRuns:
         for p in self.input_profile_db_paths:
             profile_db = dbops.ProfileDatabase(p)
             self.profile_dbs_info_dict[p] = profile_db.meta
+            # profiles made before --report-SNV-variability-full, --report-INDEL-variability-full and
+            # --min-indel-length existed have the same behavior as --report-variability-full, and no min indel length
+            self.profile_dbs_info_dict[p].setdefault('report_SNV_variability_full', int(bool(profile_db.meta.get('report_variability_full'))))
+            self.profile_dbs_info_dict[p].setdefault('report_INDEL_variability_full', int(bool(profile_db.meta.get('report_variability_full'))))
+            self.profile_dbs_info_dict[p].setdefault('min_indel_length', 0)
 
         self.progress.end()
 
@@ -286,6 +291,9 @@ class MultipleRuns:
                      ('max_contig_length', 'The maximum contig length (--max-contig-length) values'),
                      ('min_coverage_for_variability', 'The minimum coverage values to report variability (-V)'),
                      ('report_variability_full', 'Whether to report full variability (--report-variability-full) flags'),
+                     ('report_SNV_variability_full', 'Whether to report full SNV variability (--report-SNV-variability-full) flags'),
+                     ('report_INDEL_variability_full', 'Whether to report full indel variability (--report-INDEL-variability-full) flags'),
+                     ('min_indel_length', 'The minimum indel length (--min-indel-length) values'),
                      ('SCVs_profiled', 'Profile SCVs flags (--profile-SCVs)'),
                      ('SNVs_profiled', 'SNV profiling flags (--skip-SNV-profiling)'),
                      ('INDELs_profiled', 'Profile indels flags (--profile-indels)'),
@@ -445,6 +453,9 @@ class MultipleRuns:
         self.num_splits = C('num_splits')
         self.min_coverage_for_variability = C('min_coverage_for_variability')
         self.report_variability_full = C('report_variability_full')
+        self.report_SNV_variability_full = int(C('report_SNV_variability_full'))
+        self.report_INDEL_variability_full = int(C('report_INDEL_variability_full'))
+        self.min_indel_length = int(C('min_indel_length'))
         self.SCVs_profiled = C('SCVs_profiled')
         self.SNVs_profiled = C('SNVs_profiled')
         self.INDELs_profiled = int(C('INDELs_profiled'))
@@ -496,6 +507,9 @@ class MultipleRuns:
                        'total_length': self.total_length,
                        'min_coverage_for_variability': self.min_coverage_for_variability,
                        'report_variability_full': self.report_variability_full,
+                       'report_SNV_variability_full': self.report_SNV_variability_full,
+                       'report_INDEL_variability_full': self.report_INDEL_variability_full,
+                       'min_indel_length': self.min_indel_length,
                        'contigs_db_hash': self.contigs_db_hash,
                        'description': self.description if self.description else '_No description is provided_'}
         profile_db.create(meta_values)

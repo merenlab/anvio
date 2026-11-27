@@ -11,7 +11,7 @@ $$y = \left(\frac{1}{b}\right)^{x^{\frac{1}{b}} - m} + c$$
 
 where $x$ is the coverage depth and the model parameters are $b = 2$, $m = 1.45$, $c = 0.05$. This gives a threshold of approximately 0.17 at 20X coverage, 0.07 at 50X, and asymptotically approaches 0.05 at very high coverage. Positions that do not meet this threshold are silently excluded from the database and will never appear in the output of this program.
 
-The user can bypass this filter entirely and store all observed variation regardless of frequency by including `--report-variability-full` when running %(anvi-profile)s. But the use of this parameter will dramatically increase database size, and should only be used with extreme care and attention (this is a very politically correct way to say "please do not use this parameter unless you are certain that this is what you need").
+The user can bypass this filter entirely and store all observed variation regardless of frequency by including `--report-variability-full` when running %(anvi-profile)s. To do this for SNVs only, or for indels only, use `--report-SNV-variability-full` or `--report-INDEL-variability-full` instead. But the use of this parameter will dramatically increase database size, and should only be used with extreme care and attention (this is a very politically correct way to say "please do not use this parameter unless you are certain that this is what you need").
 
 ## Basic usage
 
