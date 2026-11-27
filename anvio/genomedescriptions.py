@@ -999,6 +999,8 @@ class AggregateFunctions:
         self.functional_enrichment_output_path = A('output_file')
         self.qlambda = A('qlambda')
         self.report_per_population_copy_number = A('add_per_population_copy_number') or False
+        self.num_population_estimator_statistic_explicitly_set = A('num_population_estimator_statistic') is not None
+        self.num_population_estimator_statistic = A('num_population_estimator_statistic') or hmmops.NUM_POPULATIONS_ESTIMATORS[0]
 
         # -----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----
         # these are some primary data structures this class reports
@@ -1203,6 +1205,17 @@ class AggregateFunctions:
                                   "internal-genomes file or a genomes-storage database? No need to normalize those "
                                   "based on an estimated population number, when you can just count the number of "
                                   "genomes in your collection rather than relying on an SCG-based estimate.")
+
+        if self.num_population_estimator_statistic_explicitly_set and not self.report_per_population_copy_number:
+            raise ConfigError("You have asked for a specific `--num-population-estimator-statistic`, but the number of "
+                              "populations is only estimated when you ask for per-population copy numbers. Please either "
+                              "add the flag `--add-per-population-copy-number` if that's really what you intend to do, "
+                              "or drop `--num-population-estimator-statistic` so your command looks neat and collected.")
+
+        if self.num_population_estimator_statistic not in hmmops.NUM_POPULATIONS_ESTIMATORS:
+            raise ConfigError(f"The statistic '{self.num_population_estimator_statistic}' you have provided for "
+                              f"`--num-population-estimator-statistic` is not one anvi'o knows about :/ Please pick "
+                              f"one of these: {', '.join(hmmops.NUM_POPULATIONS_ESTIMATORS)}.")
 
         if self.min_occurrence and not isinstance(self.min_occurrence, int):
             raise ConfigError("Obviously, --min-occurrence must be an integer.")
@@ -1416,9 +1429,10 @@ class AggregateFunctions:
         This function fills in `self.num_populations_per_layer`, which is later used to turn function
         frequencies into per-population copy number values. The number of populations for a given
         metagenome is estimated from its single-copy core gene (SCG) annotations following the same
-        logic as `anvi-display-contigs-stats`: for each domain-specific SCG set, anvi'o takes the mode
-        of the number of hits across all SCGs in the set, and sums these per-domain estimates across all
-        domains of life it has SCGs for (Bacteria, Archaea, and Eukarya).
+        logic as `anvi-display-contigs-stats`: for each domain-specific SCG set, anvi'o summarizes the
+        number of hits across all SCGs in the set using `self.num_population_estimator_statistic` (the
+        mode by default, or the median; see `hmmops.NUM_POPULATIONS_ESTIMATORS`), and sums these
+        per-domain estimates across all domains of life it has SCGs for (Bacteria, Archaea, and Eukarya).
 
         A layer whose single-copy core genes are too sparse to yield an estimate will be assigned a
         population size of zero, which downstream reporting will render as a `NA` value rather than
@@ -1440,7 +1454,7 @@ class AggregateFunctions:
             self.progress.increment()
             self.progress.update(layer_name)
 
-            num_genomes_estimator = hmmops.NumGenomesEstimator(self.layer_name_to_contigs_db_path[layer_name])
+            num_genomes_estimator = hmmops.NumGenomesEstimator(self.layer_name_to_contigs_db_path[layer_name], estimator=self.num_population_estimator_statistic)
 
             # a (meta)genome with no single-copy core gene annotations at all is a show stopper, since there
             # is no way to estimate its number of populations. we collect these to report them all at once.
